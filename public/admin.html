@@ -1361,44 +1361,49 @@
           grid-template-columns: minmax(160px, 190px) minmax(0, 1fr);
         }
 
-        .config-layout > .config-panel:nth-of-type(1) {
+        .config-layout > [aria-labelledby="config-media-network-heading"] {
           grid-column: 1;
           grid-row: 1 / span 2;
         }
 
-        .config-layout > .config-panel:nth-of-type(2) {
+        .config-layout > [aria-labelledby="config-rtc-ports-heading"] {
           grid-column: 2;
           grid-row: 1;
         }
 
-        .config-layout > .config-panel:nth-of-type(3) {
+        .config-layout > [aria-labelledby="config-guest-login-heading"] {
           grid-column: 1;
           grid-row: 3;
         }
 
-        .config-layout > .config-panel:nth-of-type(4) {
+        .config-layout > [aria-labelledby="config-api-key-heading"] {
           grid-column: 2;
           grid-row: 2 / span 2;
         }
 
-        .config-layout > .config-panel:nth-of-type(5) {
-          grid-column: 1;
+        .config-layout > [aria-labelledby="config-web-access-heading"] {
+          grid-column: 1 / -1;
           grid-row: 4;
         }
 
-        .config-layout > .config-panel:nth-of-type(6) {
+        .config-layout > [aria-labelledby="config-network-heading"] {
+          grid-column: 1;
+          grid-row: 5;
+        }
+
+        .config-layout > #container-restart-panel {
           grid-column: 2;
-          grid-row: 4;
+          grid-row: 5;
+        }
+
+        .config-layout > .config-backup-panel {
+          grid-column: 1 / -1;
+          grid-row: 6;
         }
 
         .config-layout > .default-client-settings-panel {
           grid-column: 1 / -1;
-          grid-row: auto;
-        }
-
-        #container-restart-panel.is-hidden ~ .config-backup-panel {
-          grid-column: 2;
-          grid-row: 4;
+          grid-row: 7;
         }
       }
 
