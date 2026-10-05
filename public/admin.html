@@ -1622,20 +1622,15 @@
 
       .config-auto-backup-form {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(10rem, 12rem);
+        grid-template-columns: minmax(0, 1fr) 3.5rem;
         gap: 0.75rem 1rem;
-        align-items: end;
-        margin-top: 1.25rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border);
-      }
-
-      .config-auto-backup-form.is-collapsed {
-        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
+        margin-top: 1.25rem;
       }
 
       .config-auto-backup-toggle {
+        grid-column: 1;
+        grid-row: 1;
         min-height: 2.2rem;
         display: flex;
         align-items: center;
@@ -1646,6 +1641,10 @@
       }
 
       .config-auto-backup-interval {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: end;
+        width: min(100%, 12rem);
         display: grid;
         gap: 0.35rem;
         font-weight: 600;
@@ -1676,6 +1675,7 @@
 
       .config-auto-backup-form.is-collapsed .config-auto-backup-footer {
         grid-column: 2;
+        grid-row: 1;
         grid-template-columns: auto;
       }
 
@@ -2928,10 +2928,6 @@
         }
 
         .config-transfer-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .config-auto-backup-form {
           grid-template-columns: 1fr;
         }
 
