@@ -1382,28 +1382,32 @@
         }
 
         .config-layout > [aria-labelledby="config-web-access-heading"] {
-          grid-column: 1 / -1;
+          grid-column: 1;
           grid-row: 4;
         }
 
         .config-layout > [aria-labelledby="config-network-heading"] {
+          grid-column: 2;
+          grid-row: 4;
+        }
+
+        .config-layout > #container-restart-panel {
           grid-column: 1;
           grid-row: 5;
         }
 
-        .config-layout > #container-restart-panel {
+        .config-layout > .config-backup-panel {
           grid-column: 2;
           grid-row: 5;
         }
 
-        .config-layout > .config-backup-panel {
+        #container-restart-panel.is-hidden ~ .config-backup-panel {
           grid-column: 1 / -1;
-          grid-row: 6;
         }
 
         .config-layout > .default-client-settings-panel {
           grid-column: 1 / -1;
-          grid-row: 7;
+          grid-row: 6;
         }
       }
 
