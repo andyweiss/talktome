@@ -1391,271 +1391,159 @@
       }
 
       @media (min-width: 1280px) {
-        .config-transfer-grid {
-          grid-template-columns: minmax(160px, 190px) minmax(0, 1fr);
-        }
-      }
-
-      .media-network-qr-card {
-        display: flex;
-        align-items: stretch;
-        justify-content: flex-end;
-        gap: var(--media-network-qr-gap);
-        width: var(--media-network-action-width);
-      }
-
-      .media-network-qr-button {
-        appearance: none;
-        -webkit-appearance: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.2rem;
-        border: 1px solid rgba(148, 163, 184, 0.28);
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.96);
-        cursor: pointer;
-        flex: 1 1 auto;
-        min-width: 0;
-        height: 100%;
-        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-      }
-
-      .media-network-qr-button:hover {
-        transform: translateY(-1px);
-        border-color: rgba(37, 99, 235, 0.55);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
-      }
-
-      .media-network-qr-button:disabled {
-        cursor: default;
-        opacity: 0.5;
-        transform: none;
-        box-shadow: none;
-      }
-
-      .media-network-qr-image {
-        display: block;
-        height: 100%;
-        width: 100%;
-        object-fit: contain;
-      }
-
-      .media-network-qr-actions {
-        display: flex;
-        align-items: stretch;
-        justify-content: flex-start;
-        align-self: stretch;
-      }
-
-      .media-network-qr-download {
-        width: var(--media-network-download-width);
-        min-width: var(--media-network-download-width);
-        min-height: 0 !important;
-        height: 100%;
+        .config-backup-panel {
+        width: min(100%, 68rem);
+        margin-inline: auto;
         padding: 0;
-      }
-
-      .media-network-qr-download svg {
-        width: 1.05rem;
-        height: 1.05rem;
-        display: block;
-      }
-
-      .icon-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-      }
-
-      .icon-button svg {
-        width: 1.05rem;
-        height: 1.05rem;
-        display: block;
-      }
-
-      .image-lightbox__actions {
-        display: flex;
-        justify-content: center;
-      }
-
-      .image-lightbox__download {
-        width: auto;
-        min-width: 7rem;
-        min-height: 2.7rem !important;
-        gap: 0.45rem;
-        padding: 0.55rem 0.9rem;
-      }
-
-      .image-lightbox {
-        position: fixed;
-        inset: 0;
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        background: rgba(11, 17, 32, 0.86);
-        backdrop-filter: blur(6px);
-      }
-
-      .image-lightbox__dialog {
-        position: relative;
-        width: min(92vw, 620px);
-        display: grid;
-        gap: 0.75rem;
-        padding: 1.2rem;
-        border-radius: 16px;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        background: rgba(19, 26, 42, 0.98);
-        box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45);
-      }
-
-      .image-lightbox__close {
-        appearance: none;
-        -webkit-appearance: none;
-        position: absolute;
-        top: 0.85rem;
-        right: 0.85rem;
-      }
-
-      .image-lightbox__title {
-        margin: 0;
-        font-size: 1.08rem;
-        font-weight: 700;
-      }
-
-      .image-lightbox__image-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.2rem;
-      }
-
-      .image-lightbox__image {
-        display: block;
-        width: min(100%, 560px);
-        height: auto;
-      }
-
-      .admin-action-dialog {
-        position: fixed;
-        inset: 0;
-        z-index: 1100;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        background: rgba(11, 17, 32, 0.82);
-        backdrop-filter: blur(6px);
-      }
-
-      .admin-action-dialog__panel {
-        width: min(92vw, 460px);
-        display: grid;
-        gap: 1rem;
-        padding: 1.25rem;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        border-radius: 16px;
-        background: rgba(19, 26, 42, 0.99);
-        box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45);
-      }
-
-      .admin-action-dialog__title,
-      .admin-action-dialog__message {
-        margin: 0;
-      }
-
-      .admin-action-dialog__title {
-        font-size: 1.15rem;
-      }
-
-      .admin-action-dialog__message {
-        color: var(--muted);
-        white-space: pre-line;
-      }
-
-      .admin-action-dialog__field {
-        display: grid;
-        gap: 0.45rem;
-      }
-
-      .admin-action-dialog__field input {
-        width: 100%;
-      }
-
-      .admin-action-dialog__field .password-input-wrap:not(.has-password-toggle) input {
-        padding-right: 0.75rem;
-      }
-
-      .admin-action-dialog__error {
-        min-height: 1.25rem;
-        color: var(--danger);
-        font-size: 0.88rem;
-      }
-
-      .admin-action-dialog__actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.65rem;
-      }
-
-      .admin-action-dialog__confirm.danger {
-        background: #b91c1c;
-      }
-
-      .admin-action-dialog__confirm.danger:hover {
-        background: #991b1b;
-      }
-
-      body.admin-dialog-open {
-        overflow: hidden;
+        border: 0;
+        background: transparent;
       }
 
       .config-transfer-grid {
         display: grid;
-        grid-template-columns: minmax(160px, 190px) minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 1rem;
-        align-items: start;
+      }
+
+      .config-transfer-card,
+      .config-auto-backup-form {
+        padding: 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.55);
+        min-width: 0;
+      }
+
+      .config-transfer-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+
+      .config-transfer-card h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .config-transfer-description {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.5;
+      }
+
+      .config-transfer-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: auto;
+        padding-top: 0.3rem;
+      }
+
+      .config-file-picker {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.75rem;
+        border: 1px dashed rgba(148, 163, 184, 0.35);
+        border-radius: 7px;
+        background: rgba(15, 23, 42, 0.3);
+        cursor: pointer;
+        min-width: 0;
+      }
+
+      .config-file-picker:hover,
+      .config-file-picker:focus-within {
+        border-color: var(--primary);
+      }
+
+      .config-file-picker > span:first-child {
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      #config-import-filename {
+        color: var(--muted);
+        font-size: 0.8rem;
+        overflow-wrap: anywhere;
       }
 
       .config-auto-backup-form {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 3.5rem;
-        gap: 0.75rem 1rem;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .config-auto-backup-header {
+        display: flex;
         align-items: center;
-        margin-top: 1.25rem;
+        gap: 1rem;
       }
 
       .config-auto-backup-toggle {
-        grid-column: 1;
-        grid-row: 1;
-        min-height: 2.2rem;
         display: flex;
+        flex: 1;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        font-weight: 600;
+        min-width: 0;
+        margin: 0;
         cursor: pointer;
       }
 
+      .config-auto-backup-title {
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .config-auto-backup-title strong {
+        font-size: 0.95rem;
+      }
+
+      .config-auto-backup-title > span {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+
+      .config-auto-backup-details {
+        display: grid;
+        grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr);
+        gap: 1rem 1.5rem;
+        align-items: center;
+      }
+
       .config-auto-backup-interval {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        justify-self: end;
-        width: min(100%, 12rem);
+        display: grid;
+        gap: 0.4rem;
+        margin: 0;
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      .config-auto-backup-footer {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .config-auto-backup-time {
         display: grid;
         gap: 0.35rem;
-        font-weight: 600;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .config-auto-backup-time > span {
+        color: var(--text);
+        font-size: 0.86rem;
       }
 
       .config-auto-backup-status {
         grid-column: 1 / -1;
-        display: grid;
-        gap: 0.3rem;
         color: var(--muted);
-        font-size: 0.82rem;
+        font-size: 0.8rem;
+        line-height: 1.5;
       }
 
       .config-auto-backup-status code {
@@ -1663,97 +1551,13 @@
         user-select: text;
       }
 
-      .config-auto-backup-footer {
-        grid-column: 1 / -1;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-        gap: 0.75rem;
-        align-items: center;
-        color: var(--muted);
-        font-size: 0.82rem;
-      }
-
-      .config-auto-backup-form.is-collapsed .config-auto-backup-footer {
-        grid-column: 2;
-        grid-row: 1;
-        grid-template-columns: auto;
-      }
-
       #config-auto-backup-error {
-        grid-column: 1 / -1;
         color: var(--danger);
         font-size: 0.82rem;
       }
 
       .config-auto-backup-actions {
-        display: flex;
-        justify-content: flex-end;
-      }
-
-      .config-export-group,
-      .config-import-group {
-        display: grid;
-        gap: 0.5rem;
-        grid-template-rows: auto 2.2rem;
-      }
-
-      .config-export-group button {
-        width: auto;
-        justify-self: start;
-      }
-
-      .config-import-actions {
-        display: flex;
-        gap: 0.75rem;
-        align-items: center;
-        min-width: 0;
-        flex-wrap: nowrap;
-      }
-
-      .config-import-actions button {
-        flex: none;
-        margin-left: auto;
-      }
-
-      .config-import-actions input[type='file'] {
-        flex: 1 1 auto;
-        min-width: 0;
-        max-width: 100%;
-        height: 2.2rem;
-        padding: 0;
-        overflow: hidden;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        color: var(--muted);
-        font-size: 0.82rem;
-        line-height: 2.2rem;
-      }
-
-      .config-import-actions input[type='file']::file-selector-button {
-        height: 2.2rem;
-        margin: 0 0.65rem 0 0;
-        padding: 0 0.65rem;
-        border: 1px solid rgba(37, 99, 235, 0.35);
-        border-radius: 6px;
-        background: rgba(37, 99, 235, 0.18);
-        color: var(--text);
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      .config-import-actions input[type='file']::-webkit-file-upload-button {
-        height: 2.2rem;
-        margin: 0 0.65rem 0 0;
-        padding: 0 0.65rem;
-        border: 1px solid rgba(37, 99, 235, 0.35);
-        border-radius: 6px;
-        background: rgba(37, 99, 235, 0.18);
-        color: var(--text);
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
+        flex: 0 0 auto;
       }
 
       .drag-handle {
@@ -2931,8 +2735,8 @@
           grid-template-columns: 1fr;
         }
 
-        .config-import-group {
-          grid-template-rows: auto auto;
+        .config-auto-backup-details {
+          grid-template-columns: minmax(0, 1fr);
         }
 
         .default-client-settings-selects,
@@ -3364,11 +3168,12 @@
 
       @media (max-width: 480px) {
         .config-auto-backup-footer {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: minmax(0, 1fr);
         }
 
-        .config-auto-backup-actions {
-          grid-column: 1 / -1;
+        .config-auto-backup-header,
+        .config-auto-backup-toggle {
+          gap: 0.65rem;
         }
 
         .admin-bar,
@@ -4119,46 +3924,61 @@
               </div>
 
               <div class="config-transfer-grid">
-                <div class="config-export-group">
-                  <label>Export backup</label>
-                  <button type="button" id="config-export-btn">Export config</button>
+                <div class="config-transfer-card">
+                  <h4>Export backup</h4>
+                  <p class="config-transfer-description">Download a copy of the current configuration as a JSON file.</p>
+                  <div class="config-transfer-actions">
+                    <button type="button" id="config-export-btn">Export config</button>
+                  </div>
                 </div>
 
-                <div class="config-import-group">
-                  <label for="config-import-file">Import config file</label>
-                  <div class="config-import-actions">
-                    <input type="file" id="config-import-file" accept=".json,application/json" />
-                    <button type="button" id="config-import-btn" class="warning">Import config</button>
+                <div class="config-transfer-card">
+                  <h4>Restore from backup</h4>
+                  <p class="config-transfer-description">Choose a previously exported Talktome configuration.</p>
+                  <label class="config-file-picker" for="config-import-file">
+                    <span>Choose JSON backup</span>
+                    <span id="config-import-filename" aria-live="polite">No file selected</span>
+                    <input type="file" id="config-import-file" class="visually-hidden" accept=".json,application/json" aria-label="Choose JSON backup" />
+                  </label>
+                  <div class="config-transfer-actions">
+                    <button type="button" id="config-import-btn" class="warning" disabled>Import config</button>
                   </div>
                 </div>
               </div>
 
               <form id="config-auto-backup-form" class="config-auto-backup-form is-collapsed">
-                <label class="config-auto-backup-toggle">
-                  <span>Automatic backups</span>
-                  <span class="admin-switch">
-                    <input type="checkbox" id="config-auto-backup-enabled" role="switch" />
-                    <span class="admin-switch__track" aria-hidden="true"></span>
-                  </span>
-                </label>
-                <label class="config-auto-backup-interval" id="config-auto-backup-interval-field" for="config-auto-backup-interval" hidden>
-                  <span>Every</span>
-                  <select id="config-auto-backup-interval">
-                    <option value="1">1 day</option>
-                    <option value="3">3 days</option>
-                    <option value="7" selected>7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30">30 days</option>
-                  </select>
-                </label>
-                <div class="config-auto-backup-status" id="config-auto-backup-status" hidden>
-                  <div>Location: <code id="config-auto-backup-directory">Loading…</code></div>
-                </div>
-                <div class="config-auto-backup-footer">
-                  <div class="config-auto-backup-time" hidden>Last backup: <span id="config-auto-backup-last" aria-live="polite">Never</span></div>
-                  <div class="config-auto-backup-time" hidden>Next backup: <span id="config-auto-backup-next" aria-live="polite">Disabled</span></div>
+                <div class="config-auto-backup-header">
+                  <label class="config-auto-backup-toggle">
+                    <span class="config-auto-backup-title">
+                      <strong>Automatic backups</strong>
+                      <span>Keep scheduled copies of your configuration.</span>
+                    </span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="config-auto-backup-enabled" role="switch" aria-label="Automatic backups" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
                   <div class="config-auto-backup-actions">
                     <button type="submit">Save</button>
+                  </div>
+                </div>
+                <div id="config-auto-backup-details" class="config-auto-backup-details" hidden>
+                  <label class="config-auto-backup-interval" id="config-auto-backup-interval-field" for="config-auto-backup-interval" hidden>
+                    <span>Backup interval</span>
+                    <select id="config-auto-backup-interval">
+                      <option value="1">1 day</option>
+                      <option value="3">3 days</option>
+                      <option value="7" selected>7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                  </label>
+                  <div class="config-auto-backup-footer">
+                    <div class="config-auto-backup-time" hidden>Last backup<span id="config-auto-backup-last" aria-live="polite">Never</span></div>
+                    <div class="config-auto-backup-time" hidden>Next backup<span id="config-auto-backup-next" aria-live="polite">Disabled</span></div>
+                  </div>
+                  <div class="config-auto-backup-status" id="config-auto-backup-status" hidden>
+                    <div>Storage location: <code id="config-auto-backup-directory">Loading…</code></div>
                   </div>
                 </div>
                 <div id="config-auto-backup-error" class="is-hidden" aria-live="polite"></div>

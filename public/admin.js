@@ -100,6 +100,7 @@ const configImportFile = document.getElementById('config-import-file');
 const automaticBackupForm = document.getElementById('config-auto-backup-form');
 const automaticBackupEnabled = document.getElementById('config-auto-backup-enabled');
 const automaticBackupInterval = document.getElementById('config-auto-backup-interval');
+let savedAutomaticBackupSettings = null;
 const apiKeyRegenerateBtn = document.getElementById('api-key-regenerate-btn');
 const apiKeyCopyBtn = document.getElementById('api-key-copy-btn');
 const apiKeyValueInput = document.getElementById('api-key-value');
@@ -3193,6 +3194,7 @@ async function loadDefaultClientSettings() {
 }
 
 function renderAutomaticBackupSettings(settings = {}) {
+  savedAutomaticBackupSettings = settings;
   if (automaticBackupEnabled) automaticBackupEnabled.checked = settings.enabled === true;
   if (automaticBackupInterval) automaticBackupInterval.value = String(settings.intervalDays ?? 7);
   const directory = document.getElementById('config-auto-backup-directory');
@@ -3209,6 +3211,7 @@ function renderAutomaticBackupSettings(settings = {}) {
     next.textContent = !settings.enabled
       ? 'Disabled'
       : settings.nextBackupAt ? formatTime(settings.nextBackupAt) : 'Pending';
+    next.dataset.savedValue = next.textContent;
   }
   if (error) {
     error.textContent = settings.lastError ? `Last error: ${settings.lastError}` : '';
@@ -3221,6 +3224,14 @@ function syncAutomaticBackupVisibility() {
   if (!automaticBackupForm) return;
   const enabled = automaticBackupEnabled?.checked === true;
   automaticBackupForm.classList.toggle('is-collapsed', !enabled);
+  const next = document.getElementById('config-auto-backup-next');
+  if (next && savedAutomaticBackupSettings) {
+    const changed = enabled !== Boolean(savedAutomaticBackupSettings.enabled)
+      || Number(automaticBackupInterval?.value || 7) !== Number(savedAutomaticBackupSettings.intervalDays ?? 7);
+    next.textContent = enabled && changed ? 'Save to apply schedule' : next.dataset.savedValue || 'Disabled';
+  }
+  const details = document.getElementById('config-auto-backup-details');
+  if (details) details.hidden = !enabled;
   const intervalField = document.getElementById('config-auto-backup-interval-field');
   const status = document.getElementById('config-auto-backup-status');
   const error = document.getElementById('config-auto-backup-error');
@@ -4496,6 +4507,7 @@ if (configExportBtn) {
 
 if (automaticBackupForm) {
   automaticBackupEnabled?.addEventListener('change', syncAutomaticBackupVisibility);
+  automaticBackupInterval?.addEventListener('change', syncAutomaticBackupVisibility);
   automaticBackupForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const submitButton = automaticBackupForm.querySelector('button[type="submit"]');
@@ -4634,6 +4646,16 @@ if (containerRestartBtn) {
   });
 }
 
+function syncConfigImportSelection() {
+  const file = configImportFile?.files?.[0];
+  const filename = document.getElementById('config-import-filename');
+  if (filename) filename.textContent = file?.name || 'No file selected';
+  if (configImportBtn) configImportBtn.disabled = !file;
+}
+
+configImportFile?.addEventListener('change', syncConfigImportSelection);
+syncConfigImportSelection();
+
 if (configImportBtn) {
   configImportBtn.addEventListener('click', async () => {
     const file = configImportFile?.files?.[0];
@@ -4674,6 +4696,7 @@ if (configImportBtn) {
       await loadData();
       if (configImportFile) {
         configImportFile.value = '';
+        syncConfigImportSelection();
       }
 
       showMessage(
@@ -4687,7 +4710,7 @@ if (configImportBtn) {
       console.error('Failed to import configuration:', err);
       showMessage('❌ Failed to import configuration', 'error', 'config');
     } finally {
-      configImportBtn.disabled = false;
+      syncConfigImportSelection();
     }
   });
 }
