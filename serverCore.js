@@ -1,5 +1,4 @@
 const express = require("express");
-const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const socketIO = require("socket.io");
@@ -21,7 +20,7 @@ const { normalizeRegisteredClientType, describeStatusClient } = require("./statu
 const { ApplePttPushService } = require("./applePttPushService");
 const { buildGuestLoginUrl, buildLoginUrl, normalizeConnectUrl, selectAdminQrUrl } = require("./qrConnectUrl");
 const { buildWebRtcListenInfos, resolveClientIceConfig } = require("./webrtcConfig");
-const { installHttpRedirectOnHttpsPort } = require("./httpsRedirect");
+const { normalizeWebAccess, resolveWebAccess, createWebServer, requestConnectOrigin } = require("./webAccess");
 const {
   listMediaNetworkInterfaces,
   normalizeSocketAddress,
@@ -2723,8 +2722,10 @@ function dispatchTargetAudioCommandToUser(userId, payload, options = {}) {
   return dispatchCompanionCommandToUser(userId, "api-target-audio-command", payload, options);
 }
 
-// HTTPS port (defaults to 443)
-const HTTPS_PORT = parseInt(process.env.PORT || process.env.HTTPS_PORT || "443", 10);
+// Backend web port (defaults to 443; HTTP in reverse-proxy mode)
+const WEB_ACCESS = resolveWebAccess(loadRuntimeConfig() || {});
+const HTTPS_PORT = WEB_ACCESS.httpsPort;
+const WEB_PROTOCOL = WEB_ACCESS.tlsMode === "proxy" ? "http" : "https";
 const mdnsHostname = (() => {
   const raw =
     process.env.MDNS_HOST ||
@@ -2746,6 +2747,7 @@ const mdnsHostname = (() => {
 let mdnsSocket = null;
 
 const HTTP_PORT = (() => {
+  if (WEB_ACCESS.tlsMode === "proxy") return null;
   const explicitPort = parseOptionalPort(process.env.HTTP_PORT);
   if (explicitPort !== null) {
     return explicitPort;
@@ -4126,37 +4128,21 @@ app.get("/admin/settings/mdns", requireAdmin, (req, res) => {
   });
 });
 
-function buildHttpsConnectUrl(host) {
+function buildBackendConnectUrl(host) {
   if (typeof host !== "string") return "";
   const trimmed = host.trim();
   if (!trimmed) return "";
-  return `https://${trimmed}:${HTTPS_PORT}`;
-}
-
-function getFirstForwardedValue(value) {
-  if (Array.isArray(value)) {
-    return getFirstForwardedValue(value[0]);
-  }
-  if (typeof value !== "string") return "";
-  return value.split(",")[0].trim();
+  return `${WEB_PROTOCOL}://${trimmed}:${HTTPS_PORT}`;
 }
 
 function resolveConfiguredAdminPublicConnectUrl() {
   return normalizeConnectUrl(
-    process.env.TALKTOME_PUBLIC_URL || process.env.PUBLIC_URL
+    WEB_ACCESS.publicUrl
   );
 }
 
 function resolveAdminRequestConnectUrl(req) {
-  const forwardedHost = getFirstForwardedValue(req?.headers?.["x-forwarded-host"]);
-  const host = forwardedHost || getFirstForwardedValue(req?.headers?.host);
-  if (!host) return "";
-
-  const forwardedProto = getFirstForwardedValue(req?.headers?.["x-forwarded-proto"]);
-  const proto = forwardedProto || (req?.socket?.encrypted ? "https" : "http");
-  if (!["http", "https"].includes(proto)) return "";
-
-  return normalizeConnectUrl(`${proto}://${host}`);
+  return normalizeConnectUrl(requestConnectOrigin(req, WEB_ACCESS));
 }
 
 function resolvePreferredAdminQrIpAddress(activeAddress) {
@@ -4185,7 +4171,7 @@ async function buildAdminMediaNetworkQrPayload(activeAddress, req = null) {
   const qrIpAddress = resolvePreferredAdminQrIpAddress(activeAddress);
   const publicConnectUrl = configuredPublicConnectUrl || requestConnectUrl;
   const activeMdnsHost = mdnsHostname || "off";
-  const mdnsUrl = mdnsHostname ? buildHttpsConnectUrl(mdnsHostname) : "";
+  const mdnsUrl = mdnsHostname ? buildBackendConnectUrl(mdnsHostname) : "";
 
   let qrCodeDataUrl = null;
   if (qrUrl) {
@@ -4219,13 +4205,42 @@ function resolveAdminConnectUrl(activeAddress, req = null) {
   const qrIpAddress = resolvePreferredAdminQrIpAddress(activeAddress);
   const configuredPublicConnectUrl = resolveConfiguredAdminPublicConnectUrl();
   const requestConnectUrl = resolveAdminRequestConnectUrl(req);
-  const adapterConnectUrl = buildHttpsConnectUrl(qrIpAddress);
+  const adapterConnectUrl = buildBackendConnectUrl(qrIpAddress);
+  if (WEB_ACCESS.tlsMode === "proxy") {
+    if (configuredPublicConnectUrl) return configuredPublicConnectUrl;
+    if (requestConnectUrl.startsWith("https://")) return requestConnectUrl;
+  }
   return selectAdminQrUrl({
     configuredUrl: configuredPublicConnectUrl,
     requestUrl: requestConnectUrl,
     adapterUrl: adapterConnectUrl,
   });
 }
+
+function webAccessSettings() {
+  const saved = normalizeWebAccess(loadRuntimeConfig() || {});
+  const active = Object.fromEntries(Object.keys(saved).map(key => [key, WEB_ACCESS[key]]));
+  return {
+    saved, active, environmentOverrides: WEB_ACCESS.environmentOverrides,
+    restartRequired: Object.keys(saved).some(key => !WEB_ACCESS.environmentOverrides.includes(key) && saved[key] !== active[key]),
+  };
+}
+
+app.get("/admin/settings/web-access", requireAdmin, (req, res) => {
+  res.json(webAccessSettings());
+});
+
+app.put("/admin/settings/web-access", requireAdmin, (req, res) => {
+  try {
+    const current = loadRuntimeConfig() || {};
+    const next = normalizeWebAccess(req.body);
+    for (const key of WEB_ACCESS.environmentOverrides) next[key] = normalizeWebAccess(current)[key];
+    saveRuntimeConfig({ ...current, ...next });
+    res.json(webAccessSettings());
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Failed to save web access settings" });
+  }
+});
 
 app.get("/admin/settings/media-network", requireAdmin, async (req, res) => {
   const config = loadRuntimeConfig() || {};
@@ -4589,6 +4604,8 @@ app.post("/admin/config/import", requireAdmin, (req, res) => {
     const nextConfig = { ...currentConfig };
 
     if (bundle.serverConfig && typeof bundle.serverConfig === "object") {
+      const importedWebAccess = normalizeWebAccess({ ...nextConfig, ...bundle.serverConfig });
+      Object.assign(nextConfig, importedWebAccess);
       if (Object.prototype.hasOwnProperty.call(bundle.serverConfig, "httpsPort")) {
         const httpsPort = parseRequiredPort(bundle.serverConfig.httpsPort, nextConfig.httpsPort ?? 443);
         nextConfig.httpsPort = httpsPort;
@@ -6264,7 +6281,7 @@ const certDir = path.join(getDataDir(), "certs");
 const keyPath = path.join(certDir, "key.pem");
 const certPath = path.join(certDir, "cert.pem");
 
-if (!fs.existsSync(certDir)) {
+if (WEB_ACCESS.tlsMode === "internal" && !fs.existsSync(certDir)) {
   fs.mkdirSync(certDir, { recursive: true });
 }
 
@@ -6337,24 +6354,15 @@ function buildSelfSignedTlsCertificate() {
   );
 }
 
-if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-  const pems = buildSelfSignedTlsCertificate();
-  fs.writeFileSync(keyPath, pems.private, { mode: 0o600 });
-  fs.writeFileSync(certPath, pems.cert, { mode: 0o600 });
-  console.log("ℹ️  Generated self-signed TLS certificate in ./certs");
-}
-
-// HTTPS Server Setup
-const httpsOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath),
-};
-
-const server = https.createServer(httpsOptions, app);
-installHttpRedirectOnHttpsPort(server, {
-  httpsPort: HTTPS_PORT,
-  fallbackHost: mdnsHostname || "localhost",
-});
+const server = createWebServer(app, WEB_ACCESS, () => {
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    const pems = buildSelfSignedTlsCertificate();
+    fs.writeFileSync(keyPath, pems.private, { mode: 0o600 });
+    fs.writeFileSync(certPath, pems.cert, { mode: 0o600 });
+    console.log("ℹ️  Generated self-signed TLS certificate in ./certs");
+  }
+  return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+}, mdnsHostname || "localhost");
 const io = socketIO(server, { serveClient: false });
 
 companionNamespace = io.of("/companion");
@@ -9158,33 +9166,33 @@ io.on("connection", (socket) => {
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
-    console.error(`[HTTPS] Port ${HTTPS_PORT} is already in use.`);
+    console.error(`[${WEB_PROTOCOL.toUpperCase()}] Port ${HTTPS_PORT} is already in use.`);
     console.error("       Choose another port or stop the process using it.");
   } else if (err.code === "EACCES") {
-    console.error(`[HTTPS] Permission denied on port ${HTTPS_PORT}.`);
+    console.error(`[${WEB_PROTOCOL.toUpperCase()}] Permission denied on port ${HTTPS_PORT}.`);
     console.error("       Run with elevated privileges or choose a high port.");
   } else {
-    console.error(`[HTTPS] Failed to start server on port ${HTTPS_PORT}: ${err.message}`);
+    console.error(`[${WEB_PROTOCOL.toUpperCase()}] Failed to start server on port ${HTTPS_PORT}: ${err.message}`);
   }
   process.exit(1);
 });
 
-function logHttpsServerReady() {
+function logWebServerReady() {
   const startupHosts = getStartupHosts();
   const configuredPublicIp = typeof process.env.PUBLIC_IP === "string"
     ? process.env.PUBLIC_IP.trim()
     : "";
   const runningInContainer = isRunningInContainer();
   const mediaRoute = resolveTransportAnnouncedAddress();
-  console.log(`🔒 HTTPS Server running on port ${HTTPS_PORT}`);
+  console.log(`${WEB_PROTOCOL.toUpperCase()} Server running on port ${HTTPS_PORT}`);
   if (startupHosts.length > 0) {
     console.log("📍 Access via:");
     startupHosts.forEach((host) => {
-      console.log(`   https://${host}:${HTTPS_PORT}`);
+      console.log(`   ${WEB_PROTOCOL}://${host}:${HTTPS_PORT}`);
     });
     console.log("🛠️ Administration via:");
     startupHosts.forEach((host) => {
-      console.log(`   https://${host}:${HTTPS_PORT}/admin`);
+      console.log(`   ${WEB_PROTOCOL}://${host}:${HTTPS_PORT}/admin`);
     });
   }
   if (runningInContainer) {
@@ -9192,7 +9200,7 @@ function logHttpsServerReady() {
     console.log("🐳 Docker note:");
     console.log("   Open the Docker host address in your browser, not the container IP.");
     if (configuredPublicIp) {
-      console.log(`   From other devices: use https://${configuredPublicIp}:${HTTPS_PORT}`);
+      console.log(`   From other devices: use ${WEB_PROTOCOL}://${configuredPublicIp}:${HTTPS_PORT}`);
     } else {
       console.log("   Use the LAN IP or DNS name of the host machine.");
       console.log("   Set PUBLIC_IP to print an explicit access URL here.");
@@ -9212,15 +9220,20 @@ function logHttpsServerReady() {
     console.log(`🎛️ Media network: automatic → ${routes || mediaRoute.announcedAddress}`);
   }
   console.log("");
-  console.log("⚠️  Browsers will show a certificate warning.");
-  console.log('   Click "Advanced" → "Proceed to site" to continue.');
+  if (WEB_ACCESS.tlsMode === "internal") {
+    console.log("⚠️  Browsers will show a certificate warning.");
+    console.log('   Click "Advanced" → "Proceed to site" to continue.');
+  } else {
+    console.log("Use the public HTTPS reverse-proxy URL for browser microphone access.");
+    if (WEB_ACCESS.publicUrl) console.log(`   ${WEB_ACCESS.publicUrl}`);
+  }
   console.log("");
   if (mdnsHostname) {
     try {
       if (!mdnsSocket) {
         mdnsSocket = startMdnsResponder(mdnsHostname);
       }
-      console.log(`📡 mDNS alias: https://${mdnsHostname}:${HTTPS_PORT}`);
+      console.log(`📡 mDNS alias: ${WEB_PROTOCOL}://${mdnsHostname}:${HTTPS_PORT}`);
     } catch (err) {
       console.warn(`[mDNS] Failed to advertise ${mdnsHostname}: ${err.message}`);
     }
@@ -9233,7 +9246,7 @@ function logHttpsServerReady() {
   }
   console.log("🔌 Companion API:");
   startupHosts.forEach((host) => {
-    console.log(`   https://${host}:${HTTPS_PORT}/api/v1/companion/state`);
+    console.log(`   ${WEB_PROTOCOL}://${host}:${HTTPS_PORT}/api/v1/companion/state`);
   });
   console.log(`🔌 Companion Socket.IO namespace: /companion`);
   if (!readCompanionApiKeyFromEnv()) {
@@ -9241,11 +9254,11 @@ function logHttpsServerReady() {
   }
 }
 
-function startHttpsServer() {
-  server.listen(HTTPS_PORT, logHttpsServerReady);
+function startWebServer() {
+  server.listen(HTTPS_PORT, logWebServerReady);
 }
 
-mediaReadyPromise.then(startHttpsServer).catch((error) => {
+mediaReadyPromise.then(startWebServer).catch((error) => {
   const message = error?.stack || error?.message || String(error);
   console.error(`[INIT] mediasoup initialization failed: ${message}`);
   try {

@@ -1,12 +1,22 @@
+const http = require("http");
 const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const { getDataDir } = require("./dataPaths");
+const { resolveWebAccess } = require("./webAccess");
 
-const port = Number(process.env.PORT || process.env.HTTPS_PORT || 8443);
-
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
+let access;
+try {
+  const configPath = path.join(getDataDir(), "config.json");
+  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf8")) : {};
+  access = resolveWebAccess(config);
+} catch {
   process.exit(1);
 }
+const port = access.httpsPort;
+const client = access.tlsMode === "proxy" ? http : https;
 
-const request = https.get(
+const request = client.get(
   {
     hostname: "127.0.0.1",
     port,

@@ -198,7 +198,8 @@ function describeMediaNetworkSelection(selection, availableInterfaces) {
 
 function hasEnvConfig() {
   return Boolean(
-    process.env.PORT ||
+    process.env.TALKTOME_TLS_MODE ||
+      process.env.PORT ||
       process.env.HTTPS_PORT ||
       process.env.MDNS_HOST ||
       process.env.MDNS_NAME ||
@@ -410,6 +411,7 @@ async function runWizard(existingConfig = null) {
     const mediaNetwork = await promptForMediaNetwork(rl, existingConfig);
 
     const config = {
+      ...existingConfig,
       httpsPort,
       mdnsHost,
       rtcPortStart: rtcPortRange.start,
@@ -448,9 +450,6 @@ function shouldRunWizard(config) {
 
 function applyConfig(config) {
   if (!config) return;
-  if (!process.env.PORT && !process.env.HTTPS_PORT && config.httpsPort) {
-    process.env.HTTPS_PORT = String(config.httpsPort);
-  }
   if (
     !process.env.MDNS_HOST &&
     !process.env.MDNS_NAME &&
@@ -493,7 +492,7 @@ function applyConfig(config) {
     config = await runWizard(existingConfig);
   } else if (config && isInteractive() && !hasEnvConfig()) {
     const mdnsHost = resolveEffectiveMdnsHost(config);
-    const httpPort = resolveEffectiveHttpPort(config, mdnsHost);
+    const httpPort = config.tlsMode === "proxy" ? null : resolveEffectiveHttpPort(config, mdnsHost);
     const httpsPort = config.httpsPort ?? 443;
     const rtcPortRange = normalizeRtcPortRange(config.rtcPortStart, config.rtcPortCount);
     const conflicts = [];

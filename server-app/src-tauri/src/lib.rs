@@ -436,7 +436,21 @@ fn write_runtime_config(config: &ServerRuntimeConfig) -> Result<PathBuf, String>
         .parent()
         .ok_or_else(|| "runtime config path has no parent directory".to_string())?;
     fs::create_dir_all(parent).map_err(|err| format!("failed to create config dir: {err}"))?;
-    let contents = serde_json::to_string_pretty(config)
+    // Preserve settings managed by the web admin, including reverse-proxy access.
+    let mut saved: serde_json::Value = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    let updated =
+        serde_json::to_value(config).map_err(|err| format!("failed to serialize config: {err}"))?;
+    if let (Some(saved), Some(updated)) = (saved.as_object_mut(), updated.as_object()) {
+        saved.remove("mediaInterfaceName");
+        saved.remove("mediaAnnouncedAddress");
+        saved.extend(updated.clone());
+    } else {
+        saved = updated;
+    }
+    let contents = serde_json::to_string_pretty(&saved)
         .map_err(|err| format!("failed to serialize config: {err}"))?;
     fs::write(&path, format!("{contents}\n"))
         .map_err(|err| format!("failed to write config: {err}"))?;
@@ -495,6 +509,28 @@ fn admin_url(
 }
 
 fn admin_url_from_config() -> String {
+    let saved: serde_json::Value = fs::read_to_string(runtime_config_path())
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    let mode = env::var("TALKTOME_TLS_MODE")
+        .ok()
+        .unwrap_or_else(|| saved["tlsMode"].as_str().unwrap_or("internal").to_string());
+    if mode == "proxy" {
+        let public_url = env::var("TALKTOME_PUBLIC_URL")
+            .ok()
+            .or_else(|| env::var("PUBLIC_URL").ok())
+            .unwrap_or_else(|| saved["publicUrl"].as_str().unwrap_or("").to_string());
+        if public_url.starts_with("https://") {
+            return format!("{}/admin", public_url.trim_end_matches('/'));
+        }
+        let config = load_runtime_config().unwrap_or_default();
+        return format!(
+            "http://{}:{}/admin",
+            admin_host_from_config(&config, &get_available_media_network_interfaces()),
+            config.https_port
+        );
+    }
     let config = load_runtime_config().unwrap_or_default();
     admin_url(&config, &get_available_media_network_interfaces())
 }
@@ -713,7 +749,8 @@ fn configure_server_command(_command: &mut Command) {
 }
 
 fn append_log(app: &AppHandle, line: String) {
-    let became_ready = line.contains("HTTPS Server running on port");
+    let became_ready = line.contains("HTTPS Server running on port")
+        || line.contains("HTTP Server running on port");
     let timestamped_line = timestamp_log_line(&line);
     if let Some(state) = app.try_state::<Mutex<ServerManager>>() {
         if let Ok(mut manager) = state.lock() {

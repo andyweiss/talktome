@@ -1,6 +1,7 @@
 const REGISTERED_CLIENT_LABELS = Object.freeze({
   "ios-app": "iOS App",
   "android-app": "Android App",
+  "headless": "Headless",
 });
 
 function normalizeRegisteredClientType(value) {

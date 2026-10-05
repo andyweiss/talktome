@@ -116,7 +116,10 @@ remain single-address modes for deterministic or NAT-facing deployments.
 
 Useful environment overrides:
 
-- `PORT` / `HTTPS_PORT`: HTTPS UI port
+- `PORT` / `HTTPS_PORT`: backend UI port (HTTPS by default, HTTP in proxy mode)
+- `TALKTOME_TLS_MODE`: `internal` (default, built-in HTTPS) or `proxy` (HTTP backend behind an HTTPS reverse proxy)
+- `TALKTOME_PUBLIC_URL`: public HTTPS origin for connection links and QR codes
+- `TALKTOME_TRUSTED_PROXIES`: comma-separated proxy IP/CIDR allowlist for forwarded host/protocol headers (falls back to `TALKTOME_SSO_TRUSTED_PROXIES`)
 - `HTTP_PORT`: redirect port, or `off`
 - `PUBLIC_IP`: manual WebRTC announced address
 - `MDNS_HOST`: mDNS hostname, or `off`
@@ -133,6 +136,57 @@ Useful environment overrides:
 - `COMPANION_API_KEY`: fixed Companion/API key
 
 Changing media-network, RTC-port, browser ICE or SSO environment settings requires a server restart. Guest login changes apply immediately.
+
+## HTTPS reverse proxy
+
+Select **Admin → Config → Web access → HTTPS via reverse proxy**, or set
+`TALKTOME_TLS_MODE=proxy`. The backend port remains `PORT` / `HTTPS_PORT`
+(or the saved backend port); in proxy mode it serves HTTP, including Socket.IO,
+and both HTTP-to-HTTPS redirects are disabled. No local TLS certificate is needed.
+The default mode remains built-in HTTPS.
+
+Web access settings are saved in `config.json` as `tlsMode`, `httpsPort`,
+`publicUrl` and `trustedProxies`. Environment variables take precedence and lock
+individual fields in Admin. Changes require a server restart.
+
+Example Docker environment (backend port 8443):
+
+```yaml
+environment:
+  TALKTOME_TLS_MODE: proxy
+  PORT: 8443
+  MDNS_HOST: off
+  TALKTOME_PUBLIC_URL: https://talktome.example.com
+  TALKTOME_TRUSTED_PROXIES: 172.20.0.2
+```
+
+Use the actual reverse-proxy IP or a restricted proxy network CIDR for the
+allowlist. The proxy must overwrite forwarded headers. Without a trusted proxy,
+forwarded host/protocol headers are ignored; the configured public URL still
+provides the correct QR and connection links.
+
+Example Nginx location inside your HTTPS virtual host (with a certificate
+configured on Nginx):
+
+```nginx
+location / {
+    proxy_pass http://talktome:8443;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;
+    proxy_buffering off;
+}
+```
+
+Browsers must access the **public HTTPS URL**: microphone access and secure
+session cookies require it. Keep the HTTP backend private. WebRTC media still
+uses the configured RTC ports directly (or TURN); an HTTP reverse proxy does
+not forward those media ports. Configure the media network and firewall as usual.
 
 ## Data
 

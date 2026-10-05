@@ -2297,6 +2297,7 @@ async function loadData() {
     loadDefaultClientSettings(),
     loadAutomaticBackupSettings(),
     loadMdnsSettings(),
+    loadWebAccessSettings(),
     loadMediaNetworkSettings(),
     loadRtcPortSettings(),
     loadApiKeyField(),
@@ -2923,6 +2924,25 @@ async function renderConferenceList(conferences, users) {
     await Promise.all(conferences.map(conf => updateConferenceParticipantOptions(conf.id, users)));
   }
   await syncEntityMasterDetail('conferences', conferences);
+}
+
+const webAccessFields = { tlsMode: 'web-access-mode', httpsPort: 'web-access-port', publicUrl: 'web-access-public-url', trustedProxies: 'web-access-trusted-proxies' };
+
+async function loadWebAccessSettings() {
+  const payload = await fetchJSON('/admin/settings/web-access');
+  const overrides = payload.environmentOverrides || [];
+  for (const [key, id] of Object.entries(webAccessFields)) {
+    const field = document.getElementById(id);
+    field.disabled = overrides.includes(key);
+    field.value = field.disabled ? payload.active[key] : payload.saved[key];
+  }
+  document.getElementById('web-access-active').textContent = `${payload.active.tlsMode === 'proxy' ? 'HTTP behind HTTPS reverse proxy' : 'Built-in HTTPS'} · port ${payload.active.httpsPort}`;
+  document.getElementById('web-access-restart-hint').textContent = payload.restartRequired
+    ? 'Saved. Restart the server to apply the web access settings.'
+    : 'Changes require a server restart to take effect.';
+  const hint = document.getElementById('web-access-override-hint');
+  hint.classList.toggle('is-hidden', overrides.length === 0);
+  hint.textContent = `Environment overrides are active for: ${overrides.join(', ')}. These fields are managed by the deployment configuration.`;
 }
 
 async function loadMdnsSettings() {
@@ -4202,6 +4222,22 @@ document.getElementById('feed-form').addEventListener('submit', async (e) => {
   } catch (err) {
     showMessage('❌ Failed to create feed', 'error', 'feed');
     console.error(err);
+  }
+});
+
+document.getElementById('web-access-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const settings = Object.fromEntries(Object.entries(webAccessFields).map(([key, id]) => [key, document.getElementById(id).value]));
+  try {
+    const response = await authedFetch('/admin/settings/web-access', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings)
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Failed to save web access settings');
+    await loadWebAccessSettings();
+    showMessage(payload.restartRequired ? 'Web access settings saved. Restart the server to apply them.' : 'Web access settings saved.', 'success', 'config');
+  } catch (error) {
+    showMessage(error.message || 'Failed to save web access settings', 'error', 'config');
   }
 });
 
