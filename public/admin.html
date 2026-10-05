@@ -1031,11 +1031,12 @@
       }
 
       #web-access-form {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+        display: flex;
+        flex-wrap: wrap;
       }
 
       #web-access-form .field-group {
+        flex: 1 1 14rem;
         flex-direction: column;
         min-width: 0;
       }
@@ -1051,8 +1052,8 @@
       }
 
       #web-access-form button {
-        grid-column: 1 / -1;
-        justify-self: end;
+        flex: 0 0 auto;
+        margin-left: auto;
       }
 
       #mdns-form .field-group label {
