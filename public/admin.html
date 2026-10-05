@@ -1351,59 +1351,45 @@
         accent-color: var(--primary);
       }
 
-      @media (min-width: 1280px) {
-        .config-layout {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          align-items: stretch;
-        }
+      .config-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.2rem 0.65rem;
+        margin-bottom: 1.1rem;
+        border-bottom: 1px solid var(--border);
+      }
 
+      .config-tabs button {
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: var(--muted);
+        padding: 0.55rem 0.35rem;
+        min-height: 2.65rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .config-tabs button:hover,
+      .config-tabs button:focus-visible {
+        background: transparent;
+        color: var(--text);
+      }
+
+      .config-tabs button[aria-selected='true'] {
+        color: #fff;
+        border-bottom-color: var(--primary);
+      }
+
+      .config-category-panel[hidden] {
+        display: none;
+      }
+
+      @media (min-width: 1280px) {
         .config-transfer-grid {
           grid-template-columns: minmax(160px, 190px) minmax(0, 1fr);
-        }
-
-        .config-layout > [aria-labelledby="config-media-network-heading"] {
-          grid-column: 1;
-          grid-row: 1 / span 2;
-        }
-
-        .config-layout > [aria-labelledby="config-rtc-ports-heading"] {
-          grid-column: 2;
-          grid-row: 1;
-        }
-
-        .config-layout > [aria-labelledby="config-guest-login-heading"] {
-          grid-column: 1;
-          grid-row: 3;
-        }
-
-        .config-layout > [aria-labelledby="config-api-key-heading"] {
-          grid-column: 2;
-          grid-row: 2 / span 2;
-        }
-
-        .config-layout > [aria-labelledby="config-web-access-heading"] {
-          grid-column: 1;
-          grid-row: 4;
-        }
-
-        .config-layout > [aria-labelledby="config-network-heading"] {
-          grid-column: 1;
-          grid-row: 5;
-        }
-
-        .config-layout > #container-restart-panel {
-          grid-column: 2;
-          grid-row: 5;
-        }
-
-        .config-layout > .config-backup-panel {
-          grid-column: 2;
-          grid-row: 4;
-        }
-
-        .config-layout > .default-client-settings-panel {
-          grid-column: 1 / -1;
-          grid-row: 6;
         }
       }
 
@@ -3928,7 +3914,43 @@
         </div>
 
         <div id="config-section-body" class="card-section-body">
-          <div class="config-layout">
+          <nav class="config-tabs" role="tablist" aria-label="Configuration categories">
+            <button type="button" id="config-network-tab" role="tab" data-config-tab="network" aria-selected="true" aria-controls="config-network-panel" tabindex="0">Network</button>
+            <button type="button" id="config-access-tab" role="tab" data-config-tab="access" aria-selected="false" aria-controls="config-access-panel" tabindex="-1">Access</button>
+            <button type="button" id="config-backups-tab" role="tab" data-config-tab="backups" aria-selected="false" aria-controls="config-backups-panel" tabindex="-1">Backups</button>
+            <button type="button" id="config-clients-tab" role="tab" data-config-tab="clients" aria-selected="false" aria-controls="config-clients-panel" tabindex="-1">Client defaults</button>
+          </nav>
+          <div id="config-network-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-network-tab" tabindex="0">
+            <div class="config-layout">
+            <section class="config-panel" aria-labelledby="config-web-access-heading">
+              <h3 id="config-web-access-heading">Web access</h3>
+              <div class="setting-meta">
+                <div>Active web access: <strong id="web-access-active">Loading...</strong></div>
+                <div id="web-access-restart-hint">Changes require a server restart to take effect.</div>
+                <div>In reverse-proxy mode, open the public HTTPS URL for microphone access. Keep the HTTP backend on a private network.</div>
+                <div id="web-access-override-hint" class="is-hidden"></div>
+              </div>
+              <form id="web-access-form" class="inline-form" autocomplete="off">
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-mode">TLS mode</label>
+                  <select id="web-access-mode"><option value="internal">Built-in HTTPS</option><option value="proxy">HTTPS via reverse proxy</option></select>
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-port">Backend port</label>
+                  <input id="web-access-port" type="number" min="1" max="65535" required />
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-public-url">Public HTTPS URL (optional)</label>
+                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com" />
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>
+                  <input id="web-access-trusted-proxies" type="text" placeholder="172.20.0.2" />
+                </div>
+                <button type="submit">Save</button>
+              </form>
+            </section>
+
             <section class="config-panel" aria-labelledby="config-media-network-heading">
               <div class="media-network-top">
                 <div id="media-network-meta" class="media-network-meta">
@@ -4012,54 +4034,6 @@
               </form>
             </section>
 
-            <section class="config-panel" aria-labelledby="config-guest-login-heading">
-              <h3 id="config-guest-login-heading">Guest login</h3>
-
-              <div class="guest-login-content">
-                <div class="setting-meta">
-                  <div>Status: <strong id="guest-login-status">Loading...</strong></div>
-                  <div>Shared target profile: <strong id="guest-login-profile">Loading...</strong></div>
-                </div>
-
-                <form id="guest-login-form" class="guest-login-form" autocomplete="off">
-                  <label class="admin-switch" for="guest-login-enabled">
-                    <span class="visually-hidden">Allow passwordless Guest login</span>
-                    <input type="checkbox" id="guest-login-enabled" role="switch" />
-                    <span class="admin-switch__track" aria-hidden="true"></span>
-                  </label>
-                </form>
-              </div>
-            </section>
-
-            <section class="config-panel" aria-labelledby="config-web-access-heading">
-              <h3 id="config-web-access-heading">Web access</h3>
-              <div class="setting-meta">
-                <div>Active web access: <strong id="web-access-active">Loading...</strong></div>
-                <div id="web-access-restart-hint">Changes require a server restart to take effect.</div>
-                <div>In reverse-proxy mode, open the public HTTPS URL for microphone access. Keep the HTTP backend on a private network.</div>
-                <div id="web-access-override-hint" class="is-hidden"></div>
-              </div>
-              <form id="web-access-form" class="inline-form" autocomplete="off">
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-mode">TLS mode</label>
-                  <select id="web-access-mode"><option value="internal">Built-in HTTPS</option><option value="proxy">HTTPS via reverse proxy</option></select>
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-port">Backend port</label>
-                  <input id="web-access-port" type="number" min="1" max="65535" required />
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-public-url">Public HTTPS URL (optional)</label>
-                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com" />
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>
-                  <input id="web-access-trusted-proxies" type="text" placeholder="172.20.0.2" />
-                </div>
-                <button type="submit">Save</button>
-              </form>
-            </section>
-
             <section class="config-panel" aria-labelledby="config-network-heading">
               <h3 id="config-network-heading">Network alias</h3>
 
@@ -4077,6 +4051,37 @@
                 </div>
                 <button type="submit">Save</button>
               </form>
+            </section>
+
+            <section id="container-restart-panel" class="config-panel is-hidden" aria-labelledby="container-restart-heading">
+              <h3 id="container-restart-heading">Server restart</h3>
+              <div class="setting-meta">
+                <div>Restarts the server. Connected clients will be disconnected briefly.</div>
+                <div>Docker deployments use their configured restart policy.</div>
+              </div>
+              <button type="button" id="container-restart-btn" class="warning">Restart server</button>
+            </section>
+            </div>
+          </div>
+          <div id="config-access-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-access-tab" tabindex="0" hidden>
+            <div class="config-layout">
+            <section class="config-panel" aria-labelledby="config-guest-login-heading">
+              <h3 id="config-guest-login-heading">Guest login</h3>
+
+              <div class="guest-login-content">
+                <div class="setting-meta">
+                  <div>Status: <strong id="guest-login-status">Loading...</strong></div>
+                  <div>Shared target profile: <strong id="guest-login-profile">Loading...</strong></div>
+                </div>
+
+                <form id="guest-login-form" class="guest-login-form" autocomplete="off">
+                  <label class="admin-switch" for="guest-login-enabled">
+                    <span class="visually-hidden">Allow passwordless Guest login</span>
+                    <input type="checkbox" id="guest-login-enabled" role="switch" />
+                    <span class="admin-switch__track" aria-hidden="true"></span>
+                  </label>
+                </form>
+              </div>
             </section>
 
             <section class="config-panel" aria-labelledby="config-api-key-heading">
@@ -4103,16 +4108,67 @@
                 </div>
               </div>
             </section>
+            </div>
+          </div>
+          <div id="config-backups-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-backups-tab" tabindex="0" hidden>
+            <div class="config-layout">
+            <section class="config-panel config-backup-panel" aria-labelledby="config-backup-heading">
+              <h3 id="config-backup-heading">Backup and restore</h3>
 
-            <section id="container-restart-panel" class="config-panel is-hidden" aria-labelledby="container-restart-heading">
-              <h3 id="container-restart-heading">Server restart</h3>
               <div class="setting-meta">
-                <div>Restarts the server. Connected clients will be disconnected briefly.</div>
-                <div>Docker deployments use their configured restart policy.</div>
+                <div>Export and import the full server configuration as a JSON backup.</div>
               </div>
-              <button type="button" id="container-restart-btn" class="warning">Restart server</button>
-            </section>
 
+              <div class="config-transfer-grid">
+                <div class="config-export-group">
+                  <label>Export backup</label>
+                  <button type="button" id="config-export-btn">Export config</button>
+                </div>
+
+                <div class="config-import-group">
+                  <label for="config-import-file">Import config file</label>
+                  <div class="config-import-actions">
+                    <input type="file" id="config-import-file" accept=".json,application/json" />
+                    <button type="button" id="config-import-btn" class="warning">Import config</button>
+                  </div>
+                </div>
+              </div>
+
+              <form id="config-auto-backup-form" class="config-auto-backup-form is-collapsed">
+                <label class="config-auto-backup-toggle">
+                  <span>Automatic backups</span>
+                  <span class="admin-switch">
+                    <input type="checkbox" id="config-auto-backup-enabled" role="switch" />
+                    <span class="admin-switch__track" aria-hidden="true"></span>
+                  </span>
+                </label>
+                <label class="config-auto-backup-interval" id="config-auto-backup-interval-field" for="config-auto-backup-interval" hidden>
+                  <span>Every</span>
+                  <select id="config-auto-backup-interval">
+                    <option value="1">1 day</option>
+                    <option value="3">3 days</option>
+                    <option value="7" selected>7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                  </select>
+                </label>
+                <div class="config-auto-backup-status" id="config-auto-backup-status" hidden>
+                  <div>Location: <code id="config-auto-backup-directory">Loading…</code></div>
+                </div>
+                <div class="config-auto-backup-footer">
+                  <div class="config-auto-backup-time" hidden>Last backup: <span id="config-auto-backup-last" aria-live="polite">Never</span></div>
+                  <div class="config-auto-backup-time" hidden>Next backup: <span id="config-auto-backup-next" aria-live="polite">Disabled</span></div>
+                  <div class="config-auto-backup-actions">
+                    <button type="submit">Save</button>
+                  </div>
+                </div>
+                <div id="config-auto-backup-error" class="is-hidden" aria-live="polite"></div>
+              </form>
+            </section>
+            </div>
+          </div>
+          <div id="config-clients-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-clients-tab" tabindex="0" hidden>
+            <div class="config-layout">
             <section class="config-panel default-client-settings-panel" aria-labelledby="config-default-client-heading">
               <h3 id="config-default-client-heading">Default client settings</h3>
 
@@ -4194,61 +4250,9 @@
                 </div>
               </form>
             </section>
-
-            <section class="config-panel config-backup-panel" aria-labelledby="config-backup-heading">
-              <h3 id="config-backup-heading">Backup and restore</h3>
-
-              <div class="setting-meta">
-                <div>Export and import the full server configuration as a JSON backup.</div>
-              </div>
-
-              <div class="config-transfer-grid">
-                <div class="config-export-group">
-                  <label>Export backup</label>
-                  <button type="button" id="config-export-btn">Export config</button>
-                </div>
-
-                <div class="config-import-group">
-                  <label for="config-import-file">Import config file</label>
-                  <div class="config-import-actions">
-                    <input type="file" id="config-import-file" accept=".json,application/json" />
-                    <button type="button" id="config-import-btn" class="warning">Import config</button>
-                  </div>
-                </div>
-              </div>
-
-              <form id="config-auto-backup-form" class="config-auto-backup-form is-collapsed">
-                <label class="config-auto-backup-toggle">
-                  <span>Automatic backups</span>
-                  <span class="admin-switch">
-                    <input type="checkbox" id="config-auto-backup-enabled" role="switch" />
-                    <span class="admin-switch__track" aria-hidden="true"></span>
-                  </span>
-                </label>
-                <label class="config-auto-backup-interval" id="config-auto-backup-interval-field" for="config-auto-backup-interval" hidden>
-                  <span>Every</span>
-                  <select id="config-auto-backup-interval">
-                    <option value="1">1 day</option>
-                    <option value="3">3 days</option>
-                    <option value="7" selected>7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30">30 days</option>
-                  </select>
-                </label>
-                <div class="config-auto-backup-status" id="config-auto-backup-status" hidden>
-                  <div>Location: <code id="config-auto-backup-directory">Loading…</code></div>
-                </div>
-                <div class="config-auto-backup-footer">
-                  <div class="config-auto-backup-time" hidden>Last backup: <span id="config-auto-backup-last" aria-live="polite">Never</span></div>
-                  <div class="config-auto-backup-time" hidden>Next backup: <span id="config-auto-backup-next" aria-live="polite">Disabled</span></div>
-                  <div class="config-auto-backup-actions">
-                    <button type="submit">Save</button>
-                  </div>
-                </div>
-                <div id="config-auto-backup-error" class="is-hidden" aria-live="polite"></div>
-              </form>
-            </section>
+            </div>
           </div>
+
         </div>
       </section>
     </main>

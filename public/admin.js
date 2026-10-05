@@ -56,6 +56,8 @@ const adminBarMessage = document.getElementById('admin-bar-message');
 const adminNameLabel = document.getElementById('admin-name-label');
 const adminLogoutBtn = document.getElementById('admin-logout');
 const adminNavLinks = [...document.querySelectorAll('[data-admin-nav]')];
+const configTabs = [...document.querySelectorAll('[data-config-tab]')];
+let activeConfigCategory = 'network';
 const statusUsersBody = document.getElementById('status-users-body');
 const statusFeedsBody = document.getElementById('status-feeds-body');
 const statusBridgesBody = document.getElementById('status-bridges-body');
@@ -548,7 +550,8 @@ function getKnownAdminViews() {
 function getAdminViewFromHash() {
   const hash = window.location.hash.replace(/^#/, '');
   if (!hash) return null;
-  const normalized = hash.endsWith('-section') ? hash.slice(0, -8) : hash;
+  const section = hash.split('/')[0];
+  const normalized = section.endsWith('-section') ? section.slice(0, -8) : section;
   return getKnownAdminViews().includes(normalized) ? normalized : null;
 }
 
@@ -558,6 +561,10 @@ function activateAdminView(sectionKey, { updateHash = true, replaceHash = false 
   if (!nextSectionKey) return;
 
   activeAdminView = nextSectionKey;
+  if (nextSectionKey === 'config') {
+    const category = window.location.hash.startsWith('#config/') ? window.location.hash.split('/')[1] : activeConfigCategory;
+    activateConfigCategory(category);
+  }
   setActiveAdminNav(nextSectionKey);
 
   knownViews.forEach((viewKey) => {
@@ -571,7 +578,7 @@ function activateAdminView(sectionKey, { updateHash = true, replaceHash = false 
   setAdminSectionCollapsed(nextSectionKey, false, { persist: false });
 
   if (updateHash) {
-    const nextHash = `#${nextSectionKey}`;
+    const nextHash = nextSectionKey === 'config' ? `#config/${activeConfigCategory}` : `#${nextSectionKey}`;
     if (window.location.hash !== nextHash) {
       if (replaceHash) {
         history.replaceState(null, '', nextHash);
@@ -615,6 +622,41 @@ window.openUserFromStatus = async function (userId) {
   });
 };
 
+function activateConfigCategory(category, { updateHash = false, focus = false } = {}) {
+  const selected = configTabs.find(tab => tab.dataset.configTab === category) || configTabs[0];
+  if (!selected) return;
+  activeConfigCategory = selected.dataset.configTab;
+  configTabs.forEach(tab => {
+    const active = tab === selected;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+    if (panel) panel.hidden = !active;
+  });
+  if (updateHash) {
+    const hash = `#config/${activeConfigCategory}`;
+    if (window.location.hash !== hash) history.pushState(null, '', hash);
+  }
+  if (focus) selected.focus();
+  if (activeConfigCategory === 'network') requestAnimationFrame(syncMediaNetworkQrPreviewSize);
+}
+
+function setupConfigNavigation() {
+  configTabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => activateConfigCategory(tab.dataset.configTab, { updateHash: true }));
+    tab.addEventListener('keydown', event => {
+      let next;
+      if (event.key === 'ArrowRight') next = (index + 1) % configTabs.length;
+      if (event.key === 'ArrowLeft') next = (index + configTabs.length - 1) % configTabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = configTabs.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      activateConfigCategory(configTabs[next].dataset.configTab, { updateHash: true, focus: true });
+    });
+  });
+}
+
 function setupAdminNavigation() {
   activateAdminView(getAdminViewFromHash() || adminNavLinks[0]?.dataset.adminNav || 'status', {
     updateHash: Boolean(getAdminViewFromHash()),
@@ -644,6 +686,7 @@ function setupAdminNavigation() {
   });
 }
 
+setupConfigNavigation();
 setupAdminNavigation();
 
 function escapeHtml(value) {
