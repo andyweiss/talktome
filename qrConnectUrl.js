@@ -66,7 +66,20 @@ function buildGuestLoginUrl(connectUrl) {
   return normalized ? `${normalized}/#guest` : "";
 }
 
+function buildMediaNetworkQrTargets({ addresses = [], protocol = "https", port, tlsMode = "internal", proxyUrl } = {}) {
+  const activeAddresses = [...new Set(addresses.filter(Boolean))];
+  if (tlsMode === "proxy") {
+    const qrUrl = normalizeConnectUrl(proxyUrl);
+    return activeAddresses.length && qrUrl ? [{ address: new URL(qrUrl).hostname, qrUrl }] : [];
+  }
+  return activeAddresses.map(address => {
+    const host = address.includes(":") ? `[${address}]` : address;
+    return { address, qrUrl: normalizeConnectUrl(`${protocol}://${host}:${port}`) };
+  }).filter(target => target.qrUrl);
+}
+
 module.exports = {
+  buildMediaNetworkQrTargets,
   buildGuestLoginUrl,
   buildLoginUrl,
   isLocalOnlyConnectUrl,

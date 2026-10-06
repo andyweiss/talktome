@@ -84,3 +84,20 @@ test("builds a guest login URL without creating a credential token", () => {
   );
   assert.equal(buildGuestLoginUrl(""), "");
 });
+
+test("media network QR targets cover each active address directly", () => {
+  const { buildMediaNetworkQrTargets } = require('./qrConnectUrl');
+  assert.deepEqual(buildMediaNetworkQrTargets({ addresses: ['192.168.178.166', '192.168.178.88', '192.168.178.166'], port: 8443 }), [
+    { address: '192.168.178.166', qrUrl: 'https://192.168.178.166:8443' },
+    { address: '192.168.178.88', qrUrl: 'https://192.168.178.88:8443' },
+  ]);
+  assert.deepEqual(buildMediaNetworkQrTargets({ addresses: [], port: 8443 }), []);
+  assert.equal(buildMediaNetworkQrTargets({ addresses: ['::1'], port: 8443 })[0].qrUrl, 'https://[::1]:8443');
+});
+
+test("reverse proxy QR targets use one public URL rather than duplicate backend URLs", () => {
+  const { buildMediaNetworkQrTargets } = require('./qrConnectUrl');
+  assert.deepEqual(buildMediaNetworkQrTargets({ addresses: ['192.168.178.166', '192.168.178.88'], tlsMode: 'proxy', proxyUrl: 'https://talktome.example.com' }), [
+    { address: 'talktome.example.com', qrUrl: 'https://talktome.example.com' },
+  ]);
+});

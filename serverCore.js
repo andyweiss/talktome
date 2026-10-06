@@ -18,7 +18,7 @@ const {
 } = require("./automaticConfigBackup");
 const { normalizeRegisteredClientType, describeStatusClient } = require("./statusClient");
 const { ApplePttPushService } = require("./applePttPushService");
-const { buildGuestLoginUrl, buildLoginUrl, normalizeConnectUrl, selectAdminQrUrl } = require("./qrConnectUrl");
+const { buildGuestLoginUrl, buildLoginUrl, buildMediaNetworkQrTargets, normalizeConnectUrl, selectAdminQrUrl } = require("./qrConnectUrl");
 const { buildWebRtcListenInfos, resolveClientIceConfig } = require("./webrtcConfig");
 const { normalizeWebAccess, resolveWebAccess, createWebServer, requestConnectOrigin } = require("./webAccess");
 const {
@@ -4165,7 +4165,8 @@ function resolvePreferredAdminQrIpAddress(activeAddress) {
   return candidates.find(isLikelyIPv4Address) || null;
 }
 
-async function buildAdminMediaNetworkQrPayload(activeAddress, req = null) {
+async function buildAdminMediaNetworkQrPayload(activeAddresses, req = null) {
+  const activeAddress = activeAddresses[0] || "";
   const qrUrl = resolveAdminConnectUrl(activeAddress, req);
   const configuredPublicConnectUrl = resolveConfiguredAdminPublicConnectUrl();
   const requestConnectUrl = resolveAdminRequestConnectUrl(req);
@@ -4191,6 +4192,23 @@ async function buildAdminMediaNetworkQrPayload(activeAddress, req = null) {
     }
   }
 
+  const targets = buildMediaNetworkQrTargets({
+    addresses: activeAddresses, protocol: WEB_PROTOCOL, port: HTTPS_PORT,
+    tlsMode: WEB_ACCESS.tlsMode, proxyUrl: qrUrl,
+  });
+  const qrCodes = await Promise.all(targets.map(async target => {
+    if (target.qrUrl === qrUrl) return { ...target, qrCodeDataUrl };
+    try {
+      return { ...target, qrCodeDataUrl: await QRCode.toDataURL(target.qrUrl, {
+        errorCorrectionLevel: "M", margin: 1, width: 640,
+        color: { dark: "#0f172a", light: "#ffffff" },
+      }) };
+    } catch (error) {
+      console.warn("[ADMIN] Failed to generate media network QR code:", error?.message || error);
+      return { ...target, qrCodeDataUrl: null };
+    }
+  }));
+
   return {
     httpsPort: HTTPS_PORT,
     activeMdnsHost,
@@ -4199,6 +4217,7 @@ async function buildAdminMediaNetworkQrPayload(activeAddress, req = null) {
     qrUrl: qrUrl || null,
     mdnsUrl: mdnsUrl || null,
     qrCodeDataUrl,
+    qrCodes,
   };
 }
 
@@ -4255,7 +4274,7 @@ app.get("/admin/settings/media-network", requireAdmin, async (req, res) => {
       || (saved.mode === "interface" && saved.interfaceName !== active.interfaceName)
       || (saved.mode === "manual" && saved.announcedAddress !== (active.announcedAddress || ""))
     );
-  const qrPayload = await buildAdminMediaNetworkQrPayload(active.announcedAddress, req);
+  const qrPayload = await buildAdminMediaNetworkQrPayload(getActiveRtcAddresses(active), req);
 
   res.json({
     mediaNetworkMode: saved.mode,

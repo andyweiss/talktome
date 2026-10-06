@@ -108,8 +108,6 @@ const containerRestartPanel = document.getElementById('container-restart-panel')
 const containerRestartBtn = document.getElementById('container-restart-btn');
 const mediaNetworkMeta = document.getElementById('media-network-meta');
 const mediaNetworkQrContainer = document.getElementById('media-network-qr');
-const mediaNetworkQrButton = document.getElementById('media-network-qr-button');
-const mediaNetworkQrImage = document.getElementById('media-network-qr-image');
 const guestLoginEnabledInput = document.getElementById('guest-login-enabled');
 const guestLoginStatus = document.getElementById('guest-login-status');
 const guestLoginProfile = document.getElementById('guest-login-profile');
@@ -372,7 +370,6 @@ const collapsibleAdminSections = {
 
 const ADMIN_SECTION_COLLAPSED_STORAGE_PREFIX = 'talktome:admin-section-collapsed:';
 
-let currentMediaNetworkQrState = null;
 let currentAdminImageLightboxState = null;
 let currentBridgeRegistry = [];
 let currentAdminCatalog = { users: [], conferences: [], feeds: [] };
@@ -513,12 +510,6 @@ function setAdminSectionCollapsed(sectionKey, collapsed, { persist = true } = {}
     section.buttonEl.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${section.label.toLowerCase()} section`);
   }
 
-  if (!collapsed && sectionKey === 'config') {
-    window.requestAnimationFrame(() => {
-      syncMediaNetworkQrPreviewSize();
-    });
-  }
-
   if (!persist) return;
 
   try {
@@ -638,7 +629,6 @@ function activateConfigCategory(category, { updateHash = false, focus = false } 
     if (window.location.hash !== hash) history.pushState(null, '', hash);
   }
   if (focus) selected.focus();
-  if (activeConfigCategory === 'network') requestAnimationFrame(syncMediaNetworkQrPreviewSize);
 }
 
 function setupConfigNavigation() {
@@ -1167,8 +1157,7 @@ function closeAdminImageLightbox() {
   document.body.style.removeProperty('overflow');
 }
 
-function buildMediaNetworkQrFilename(extension = 'png') {
-  const rawUrl = currentMediaNetworkQrState?.qrUrl || '';
+function buildMediaNetworkQrFilename(rawUrl, extension = 'png') {
   try {
     const host = new URL(rawUrl).hostname || 'talktome';
     const safeHost = host.replace(/[^a-z0-9.-]+/gi, '-').replace(/-+/g, '-');
@@ -1232,68 +1221,45 @@ function openAdminImageLightbox({ dataUrl, title, alt, filename, messageSection 
   document.body.style.overflow = 'hidden';
 }
 
-function openMediaNetworkQrLightbox() {
-  if (!currentMediaNetworkQrState?.renderedQrDataUrl) return;
-  openAdminImageLightbox({
-    dataUrl: currentMediaNetworkQrState.renderedQrDataUrl,
-    title: 'Connection QR Code',
-    alt: 'Large connection QR code',
-    filename: buildMediaNetworkQrFilename('png'),
-    messageSection: 'config',
-  });
-}
-
 function renderMediaNetworkQr(payload = null) {
-  const qrUrl = payload?.qrUrl || '';
-  const mdnsUrl = payload?.mdnsUrl || '';
-  const qrCodeDataUrl = payload?.qrCodeDataUrl || '';
-  const activeMdnsHost = typeof payload?.activeMdnsHost === 'string' ? payload.activeMdnsHost.trim() : '';
-  const mdnsHostLabel = activeMdnsHost && activeMdnsHost !== 'off'
-    ? activeMdnsHost
-    : '';
-  const renderedQrDataUrl = buildRenderedQrImageDataUrl({
-    qrCodeDataUrl,
-    qrUrl,
-    mdnsHostLabel,
-  });
-
-  currentMediaNetworkQrState = renderedQrDataUrl
-    ? {
-        qrUrl,
-        mdnsUrl,
-        renderedQrDataUrl,
-      }
-    : null;
-
-  if (!mediaNetworkQrContainer || !mediaNetworkQrButton || !mediaNetworkQrImage) return;
-
-  if (!renderedQrDataUrl || !qrUrl) {
-    mediaNetworkQrContainer.classList.add('is-hidden');
-    mediaNetworkQrButton.disabled = true;
-    mediaNetworkQrButton.removeAttribute('aria-expanded');
-    mediaNetworkQrButton.style.height = '';
-    mediaNetworkQrImage.removeAttribute('src');
-    mediaNetworkQrImage.alt = 'Connection QR code unavailable';
-    mediaNetworkQrImage.style.height = '';
-    mediaNetworkQrImage.style.width = '';
-    closeAdminImageLightbox();
-    return;
+  if (!mediaNetworkQrContainer) return;
+  const entries = Array.isArray(payload?.qrCodes) ? payload.qrCodes : [payload];
+  const activeMdnsHost = payload?.activeMdnsHost || '';
+  const mdnsHostLabel = activeMdnsHost !== 'off' ? activeMdnsHost : '';
+  mediaNetworkQrContainer.replaceChildren();
+  for (const entry of entries) {
+    const qrUrl = entry?.qrUrl || '';
+    const renderedQrDataUrl = buildRenderedQrImageDataUrl({
+      qrCodeDataUrl: entry?.qrCodeDataUrl, qrUrl, mdnsHostLabel,
+    });
+    if (!renderedQrDataUrl) continue;
+    const card = document.createElement('div');
+    card.className = 'media-network-qr-item';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'media-network-qr-button';
+    button.setAttribute('aria-label', `Open large connection QR code for ${qrUrl}`);
+    const image = document.createElement('img');
+    image.className = 'media-network-qr-image';
+    image.src = renderedQrDataUrl;
+    image.alt = `Connection QR code for ${qrUrl}`;
+    button.append(image);
+    button.addEventListener('click', () => openAdminImageLightbox({
+      dataUrl: renderedQrDataUrl,
+      title: `Connection QR Code · ${entry.address || new URL(qrUrl).hostname}`,
+      alt: `Large connection QR code for ${qrUrl}`,
+      filename: buildMediaNetworkQrFilename(qrUrl),
+      messageSection: 'config',
+    }));
+    const caption = document.createElement('span');
+    caption.className = 'media-network-qr-caption';
+    caption.textContent = entry.address || new URL(qrUrl).hostname;
+    card.append(button, caption);
+    mediaNetworkQrContainer.append(card);
   }
-
-  mediaNetworkQrContainer.classList.remove('is-hidden');
-  mediaNetworkQrButton.disabled = false;
-  mediaNetworkQrImage.src = renderedQrDataUrl;
-  mediaNetworkQrImage.alt = `Connection QR code for ${qrUrl}`;
-  mediaNetworkQrButton.setAttribute('aria-label', `Open large connection QR code for ${qrUrl}`);
-  syncMediaNetworkQrPreviewSize();
-}
-
-function syncMediaNetworkQrPreviewSize() {
-  if (!mediaNetworkQrButton || !mediaNetworkQrImage) return;
-  // The QR preview has a fixed CSS size, independent of the status text height.
-  mediaNetworkQrButton.style.removeProperty('height');
-  mediaNetworkQrImage.style.removeProperty('height');
-  mediaNetworkQrImage.style.removeProperty('width');
+  const isEmpty = !mediaNetworkQrContainer.children.length;
+  mediaNetworkQrContainer.classList.toggle('is-hidden', isEmpty);
+  if (isEmpty) closeAdminImageLightbox();
 }
 
 async function logoutAdmin(message) {
@@ -5196,10 +5162,6 @@ function setupMatrixInteractions(container, toggleSelector, toggleHandler) {
 setupMatrixInteractions(targetMatrixContainer, '.target-matrix-toggle', handleTargetMatrixToggle);
 setupMatrixInteractions(productionTargetMatrixContainer, '.production-target-toggle', handleProductionTargetToggle);
 
-if (mediaNetworkQrButton) {
-  mediaNetworkQrButton.addEventListener('click', () => openMediaNetworkQrLightbox());
-}
-
 if (adminImageLightboxClose) {
   adminImageLightboxClose.addEventListener('click', () => closeAdminImageLightbox());
 }
@@ -5215,12 +5177,6 @@ if (adminImageLightbox) {
     }
   });
 }
-
-window.addEventListener('resize', () => {
-  if (mediaNetworkQrContainer && !mediaNetworkQrContainer.classList.contains('is-hidden')) {
-    syncMediaNetworkQrPreviewSize();
-  }
-});
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && userAudioSettingsDialog && !userAudioSettingsDialog.classList.contains('is-hidden')) {

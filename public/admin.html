@@ -1231,6 +1231,7 @@
       .media-interface-label {
         flex: 0 0 8.5rem;
         font-weight: 600;
+        color: var(--muted);
       }
 
       .media-adapter-options {
@@ -1541,12 +1542,25 @@
       .media-network-qr-card {
         grid-column: 2;
         grid-row: 1 / span 3;
-        display: grid;
-        grid-template-columns: 6.5rem;
-        gap: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
         align-items: end;
-        max-width: 100%;
+        max-width: 21rem;
         align-self: end;
+      }
+
+      .media-network-qr-item {
+        width: 6.5rem;
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .media-network-qr-caption {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-align: center;
+        overflow-wrap: anywhere;
       }
 
       .media-network-qr-button {
@@ -3513,8 +3527,8 @@
       }
 
       @media (max-width: 480px) {
-        .media-network-qr-card {
-          grid-template-columns: 5.5rem;
+        .media-network-qr-item {
+          width: 5.5rem;
         }
 
         .config-auto-backup-footer {
@@ -4112,12 +4126,7 @@
                   <input type="text" id="media-announced-address" />
                 </div>
 
-                <div id="media-network-qr" class="media-network-qr-card is-hidden">
-                  <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
-                    <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
-                  </button>
-
-                </div>
+                <div id="media-network-qr" class="media-network-qr-card is-hidden" role="group" aria-label="Active media network QR codes"></div>
 
                 <div id="media-network-actions">
                   <button type="submit">Save</button>
