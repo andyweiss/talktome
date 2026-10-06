@@ -1136,10 +1136,15 @@
       }
 
       .media-network-meta .setting-meta {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 0.65rem 1rem;
         margin-bottom: 0;
+      }
+
+      #media-network-override-hint {
+        flex-basis: 100%;
       }
 
       .media-network-stat-label {
