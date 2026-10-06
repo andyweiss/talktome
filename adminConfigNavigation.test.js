@@ -67,3 +67,10 @@ test('configuration tabs support arrow keys, Home, End and focus', () => {
   press(3, 'Home');
   assert.equal(context.activeConfigCategory, 'network');
 });
+
+test('admin stylesheet parses without malformed blocks', () => {
+  const { transformSync } = require('esbuild');
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  const result = transformSync(css, { loader: 'css' });
+  assert.deepEqual(result.warnings, []);
+});
