@@ -945,6 +945,8 @@
       .config-layout {
         display: grid;
         gap: 1rem;
+        width: min(100%, 68rem);
+        margin-inline: auto;
       }
 
       .config-panel {
@@ -954,16 +956,17 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         background: rgba(15, 23, 42, 0.55);
-        padding: 0.95rem 1rem;
+        padding: 0.9rem 1rem;
       }
 
       .config-panel h3 {
-        margin: 0 0 0.75rem;
-        font-size: 1.05rem;
+        margin: 0 0 0.7rem;
+        font-size: 0.95rem;
       }
 
       .config-panel .setting-meta {
         margin-bottom: 0.85rem;
+        font-size: 0.86rem;
       }
 
       .config-panel > h3 + .setting-meta {
@@ -3968,34 +3971,7 @@
           </nav>
           <div id="config-network-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-network-tab" tabindex="0">
             <div class="config-layout">
-            <section class="config-panel" aria-labelledby="config-web-access-heading">
-              <h3 id="config-web-access-heading">Web access</h3>
-              <div class="setting-meta">
-                <div>Active web access: <strong id="web-access-active">Loading...</strong></div>
-                <div id="web-access-restart-hint">Changes require a server restart to take effect.</div>
-                <div>In reverse-proxy mode, open the public HTTPS URL for microphone access. Keep the HTTP backend on a private network.</div>
-                <div id="web-access-override-hint" class="is-hidden"></div>
-              </div>
-              <form id="web-access-form" class="inline-form" autocomplete="off">
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-mode">TLS mode</label>
-                  <select id="web-access-mode"><option value="internal">Built-in HTTPS</option><option value="proxy">HTTPS via reverse proxy</option></select>
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-port">Backend port</label>
-                  <input id="web-access-port" type="number" min="1" max="65535" required />
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-public-url">Public HTTPS URL (optional)</label>
-                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com" />
-                </div>
-                <div class="field-group field-group--stacked">
-                  <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>
-                  <input id="web-access-trusted-proxies" type="text" placeholder="172.20.0.2" />
-                </div>
-                <button type="submit">Save</button>
-              </form>
-            </section>
+
 
             <section class="config-panel" aria-labelledby="config-media-network-heading">
               <div class="media-network-top">
@@ -4106,6 +4082,35 @@
                 <div>Docker deployments use their configured restart policy.</div>
               </div>
               <button type="button" id="container-restart-btn" class="warning">Restart server</button>
+            </section>
+
+            <section class="config-panel" aria-labelledby="config-web-access-heading">
+              <h3 id="config-web-access-heading">Web access</h3>
+              <div class="setting-meta">
+                <div>Active web access: <strong id="web-access-active">Loading...</strong></div>
+                <div id="web-access-restart-hint">Changes require a server restart to take effect.</div>
+                <div>In reverse-proxy mode, open the public HTTPS URL for microphone access. Keep the HTTP backend on a private network.</div>
+                <div id="web-access-override-hint" class="is-hidden"></div>
+              </div>
+              <form id="web-access-form" class="inline-form" autocomplete="off">
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-mode">TLS mode</label>
+                  <select id="web-access-mode"><option value="internal">Built-in HTTPS</option><option value="proxy">HTTPS via reverse proxy</option></select>
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-port">Backend port</label>
+                  <input id="web-access-port" type="number" min="1" max="65535" required />
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-public-url">Public HTTPS URL (optional)</label>
+                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com" />
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>
+                  <input id="web-access-trusted-proxies" type="text" placeholder="172.20.0.2" />
+                </div>
+                <button type="submit">Save</button>
+              </form>
             </section>
             </div>
           </div>
