@@ -3003,16 +3003,6 @@ async function loadMdnsSettings() {
   }
 }
 
-function describeMediaNetworkMode(mode, detail = '') {
-  if (mode === 'interface') {
-    return detail ? `Preferred adapter (${detail})` : 'Preferred adapter';
-  }
-  if (mode === 'manual') {
-    return detail ? `Manual (${detail})` : 'Manual';
-  }
-  return detail ? `Automatic (${detail})` : 'Automatic (all adapters)';
-}
-
 function updateMediaNetworkFormVisibility() {
   const modeEl = document.getElementById('media-network-mode');
   const interfaceGroupEl = document.getElementById('media-interface-group');
@@ -3029,9 +3019,7 @@ function updateMediaNetworkFormVisibility() {
 
 async function loadMediaNetworkSettings() {
   const payload = await fetchJSON('/admin/settings/media-network');
-  const activeModeEl = document.getElementById('media-network-active-mode');
   const activeAddressEl = document.getElementById('media-network-active-address');
-  const savedModeEl = document.getElementById('media-network-saved-mode');
   const modeEl = document.getElementById('media-network-mode');
   const interfaceEl = document.getElementById('media-interface-name');
   const addressEl = document.getElementById('media-announced-address');
@@ -3039,8 +3027,6 @@ async function loadMediaNetworkSettings() {
   const overrideHintEl = document.getElementById('media-network-override-hint');
   const warningEl = document.getElementById('media-network-warning');
 
-  const activeMode = payload?.activeMediaNetworkMode || 'auto';
-  const activeInterfaceName = payload?.activeMediaInterfaceName || '';
   const activeAddress = payload?.activeAnnouncedAddress || 'Unavailable';
   const activeRtcAddresses = Array.isArray(payload?.activeRtcAddresses)
     ? payload.activeRtcAddresses.filter(Boolean)
@@ -3049,24 +3035,9 @@ async function loadMediaNetworkSettings() {
   const savedInterfaceName = payload?.mediaInterfaceName || '';
   const savedAddress = payload?.mediaAnnouncedAddress || '';
   const availableInterfaces = Array.isArray(payload?.availableInterfaces) ? payload.availableInterfaces : [];
-  const activeDetail = activeMode === 'auto'
-    ? `${activeRtcAddresses.length} RTC address${activeRtcAddresses.length === 1 ? '' : 'es'}`
-    : activeMode === 'interface'
-    ? activeInterfaceName
-    : activeMode === 'manual'
-      ? activeAddress
-      : activeInterfaceName || activeAddress;
-  const savedDetail = savedMode === 'interface'
-    ? savedInterfaceName
-    : savedMode === 'manual'
-      ? savedAddress
-      : '';
-
-  if (activeModeEl) activeModeEl.textContent = describeMediaNetworkMode(activeMode, activeDetail);
   if (activeAddressEl) {
     activeAddressEl.textContent = payload?.activeResolutionError || activeRtcAddresses.join(', ') || activeAddress;
   }
-  if (savedModeEl) savedModeEl.textContent = describeMediaNetworkMode(savedMode, savedDetail);
 
   if (modeEl) {
     modeEl.value = savedMode;
@@ -3119,7 +3090,6 @@ function formatRtcPortRange(start, end) {
 async function loadRtcPortSettings() {
   const payload = await fetchJSON('/admin/settings/rtc-ports');
   const activeRangeEl = document.getElementById('rtc-ports-active-range');
-  const savedRangeEl = document.getElementById('rtc-ports-saved-range');
   const startInput = document.getElementById('rtc-port-start');
   const countInput = document.getElementById('rtc-port-count');
   const restartHintEl = document.getElementById('rtc-ports-restart-hint');
@@ -3127,9 +3097,6 @@ async function loadRtcPortSettings() {
 
   if (activeRangeEl) {
     activeRangeEl.textContent = formatRtcPortRange(payload?.activeRtcPortStart, payload?.activeRtcPortEnd);
-  }
-  if (savedRangeEl) {
-    savedRangeEl.textContent = formatRtcPortRange(payload?.rtcPortStart, payload?.rtcPortEnd);
   }
   if (startInput) {
     startInput.value = payload?.rtcPortStart ?? '';
