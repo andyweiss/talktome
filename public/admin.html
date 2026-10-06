@@ -1076,7 +1076,10 @@
       }
 
       .media-network-meta {
-        display: grid;
+        grid-column: 2;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
         gap: 0.75rem;
         min-width: 0;
       }
@@ -1124,14 +1127,18 @@
 
       .media-network-top {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 7.5rem;
+        grid-template-columns: 7.5rem minmax(0, 1fr);
         gap: 1.25rem;
-        align-items: start;
-        margin-bottom: 0.8rem;
+        align-items: stretch;
       }
 
       .media-network-top:has(.media-network-qr-card.is-hidden) {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .media-network-top:has(.media-network-qr-card.is-hidden) .media-network-meta {
+        grid-column: 1;
+        grid-row: 1;
       }
 
       #media-network-form {
@@ -1432,11 +1439,13 @@
       }
 
       .media-network-qr-card {
+        grid-column: 1;
+        grid-row: 1;
         display: grid;
         gap: 0.5rem;
         width: 7.5rem;
         max-width: 100%;
-        align-self: start;
+        align-self: end;
       }
 
       .media-network-qr-button {
@@ -1476,8 +1485,10 @@
         object-fit: contain;
       }
 
-      .media-network-qr-download {
-        gap: 0.4rem;
+      .config-panel button.media-network-qr-download {
+        width: 100%;
+        gap: 0.35rem;
+        padding-inline: 0.5rem;
         white-space: nowrap;
       }
 
@@ -3065,7 +3076,12 @@
         }
 
         .media-network-qr-card {
-          justify-self: center;
+          justify-self: start;
+        }
+
+        .media-network-meta {
+          grid-column: 1;
+          grid-row: 2;
         }
 
         .image-lightbox {
@@ -3973,9 +3989,23 @@
 
 
             <section class="config-panel" aria-labelledby="config-media-network-heading">
+              <h3 id="config-media-network-heading">Media network</h3>
               <div class="media-network-top">
+                <div id="media-network-qr" class="media-network-qr-card is-hidden">
+                  <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
+                    <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
+                  </button>
+                    <button type="button" id="media-network-qr-download" class="media-network-qr-download" aria-label="Download connection QR code" title="Download QR code">
+                      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 3.5V11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6.75 8.5L10 11.75L13.25 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M4 14.25H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                      <span>Download QR</span>
+                    </button>
+
+                </div>
                 <div id="media-network-meta" class="media-network-meta">
-                  <h3 id="config-media-network-heading">Media network</h3>
                   <div class="setting-meta">
                     <div><span class="media-network-stat-label">Active mode</span><strong id="media-network-active-mode">Loading...</strong></div>
                     <div><span class="media-network-stat-label">RTC addresses</span><strong id="media-network-active-address">Loading...</strong></div>
@@ -3984,15 +4014,6 @@
                     <div id="media-network-override-hint" class="is-hidden">An environment override is active. Saved changes will only apply after restart without `PUBLIC_IP` or `TALKTOME_MEDIA_INTERFACE` overrides.</div>
                   </div>
                   <div id="media-network-warning" class="media-network-warning is-hidden" role="status"></div>
-                </div>
-
-                <div id="media-network-qr" class="media-network-qr-card is-hidden">
-                  <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
-                    <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
-                  </button>
-
-                </div>
-              </div>
 
               <form id="media-network-form" class="inline-form" autocomplete="off">
                 <div class="field-group field-group--stacked" id="media-network-mode-group">
@@ -4017,17 +4038,13 @@
                 </div>
 
                 <div id="media-network-actions">
-                    <button type="button" id="media-network-qr-download" class="media-network-qr-download" aria-label="Download connection QR code" title="Download QR code">
-                      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 3.5V11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M6.75 8.5L10 11.75L13.25 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M4 14.25H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                      </svg>
-                      <span>Download QR</span>
-                    </button>
                   <button type="submit">Save</button>
                 </div>
               </form>
+                </div>
+
+
+              </div>
             </section>
 
             <section class="config-panel" aria-labelledby="config-rtc-ports-heading">
