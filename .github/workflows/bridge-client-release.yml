@@ -5,6 +5,11 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version to build and upload to a draft (for example 1.5.10); empty uses Git version'
+        required: false
+        type: string
   push:
     branches:
       - "main"
@@ -42,6 +47,8 @@ jobs:
       - name: Resolve version from Git tags
         id: build-version
         shell: bash
+        env:
+          TALKTOME_BUILD_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || '' }}
         run: node scripts/resolve-build-version.js --github-output "$GITHUB_OUTPUT"
 
   build:
@@ -232,13 +239,14 @@ jobs:
           path: ${{ env.BRIDGE_INSTALLER_PATH }}
 
       - name: Upload Bridge artifact to draft release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_version != '')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.version.outputs.version }}
         run: >-
           bash scripts/upload-release-asset.sh
-          "$GITHUB_REF_NAME"
+          "$RELEASE_TAG"
           "$BRIDGE_INSTALLER_PATH"
-          "$GITHUB_REF_NAME - macOS + Windows"
+          "$RELEASE_TAG - macOS + Windows"
