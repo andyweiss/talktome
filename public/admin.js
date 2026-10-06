@@ -2946,6 +2946,15 @@ async function renderConferenceList(conferences, users) {
 
 const webAccessFields = { tlsMode: 'web-access-mode', httpsPort: 'web-access-port', publicUrl: 'web-access-public-url', trustedProxies: 'web-access-trusted-proxies' };
 
+function syncWebAccessProxyFields() {
+  const isProxy = document.getElementById('web-access-mode').value === 'proxy';
+  document.querySelectorAll('[data-web-access-proxy-field]').forEach(group => {
+    group.classList.toggle('is-hidden', !isProxy);
+  });
+}
+
+document.getElementById('web-access-mode').addEventListener('change', syncWebAccessProxyFields);
+
 async function loadWebAccessSettings() {
   const payload = await fetchJSON('/admin/settings/web-access');
   const overrides = payload.environmentOverrides || [];
@@ -2954,6 +2963,7 @@ async function loadWebAccessSettings() {
     field.disabled = overrides.includes(key);
     field.value = field.disabled ? payload.active[key] : payload.saved[key];
   }
+  syncWebAccessProxyFields();
   document.getElementById('web-access-active').textContent = `${payload.active.tlsMode === 'proxy' ? 'HTTP behind HTTPS reverse proxy' : 'Built-in HTTPS'} · port ${payload.active.httpsPort}`;
   document.getElementById('web-access-restart-hint').textContent = payload.restartRequired
     ? 'Saved. Restart the server to apply the web access settings.'
