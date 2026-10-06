@@ -2981,7 +2981,6 @@ async function loadWebAccessSettings() {
 async function loadMdnsSettings() {
   const payload = await fetchJSON('/admin/settings/mdns');
   const activeHostEl = document.getElementById('mdns-active-host');
-  const savedHostEl = document.getElementById('mdns-saved-host');
   const inputEl = document.getElementById('mdns-host');
   const restartHintEl = document.getElementById('mdns-restart-hint');
   const containerHintEl = document.getElementById('mdns-container-hint');
@@ -2991,7 +2990,6 @@ async function loadMdnsSettings() {
   const runningInContainer = Boolean(payload?.runningInContainer);
 
   if (activeHostEl) activeHostEl.textContent = activeHost;
-  if (savedHostEl) savedHostEl.textContent = savedHost;
   if (inputEl) inputEl.value = savedHost === 'off' ? 'off' : savedHost;
   if (restartHintEl) {
     restartHintEl.textContent = payload?.restartRequired
