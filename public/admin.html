@@ -1087,7 +1087,29 @@
       }
 
       .media-network-meta .setting-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.65rem 1rem;
         margin-bottom: 0;
+      }
+
+      .media-network-stat-label {
+        display: block;
+        margin-bottom: 0.3rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .media-network-meta .setting-meta strong {
+        display: block;
+        overflow-wrap: anywhere;
+        font-weight: 600;
+      }
+
+      #media-network-restart-hint,
+      #media-network-override-hint {
+        grid-column: 1 / -1;
+        font-size: 0.8rem;
       }
 
       .media-network-warning {
@@ -1102,9 +1124,14 @@
 
       .media-network-top {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 10rem;
+        grid-template-columns: minmax(0, 1fr) 7.5rem;
         gap: 1.25rem;
         align-items: start;
+        margin-bottom: 0.8rem;
+      }
+
+      .media-network-top:has(.media-network-qr-card.is-hidden) {
+        grid-template-columns: minmax(0, 1fr);
       }
 
       #media-network-form {
@@ -1148,6 +1175,7 @@
       #media-network-actions {
         grid-column: 3;
         display: flex;
+        gap: 0.5rem;
         align-items: flex-end;
         justify-content: flex-end;
       }
@@ -1406,7 +1434,7 @@
       .media-network-qr-card {
         display: grid;
         gap: 0.5rem;
-        width: 10rem;
+        width: 7.5rem;
         max-width: 100%;
         align-self: start;
       }
@@ -1448,17 +1476,9 @@
         object-fit: contain;
       }
 
-      .media-network-qr-actions {
-        display: flex;
-      }
-
       .media-network-qr-download {
-        width: 100%;
-        min-width: 0;
-        min-height: 2.2rem;
-        height: 2.2rem;
         gap: 0.4rem;
-        padding: 0.4rem 0.65rem;
+        white-space: nowrap;
       }
 
       .media-network-qr-download svg {
@@ -3003,6 +3023,10 @@
           grid-template-columns: 1fr;
         }
 
+        .media-network-meta .setting-meta {
+          grid-template-columns: 1fr;
+        }
+
         #media-network-mode-group,
         #media-interface-group,
         #media-announced-address-group,
@@ -3953,13 +3977,22 @@
                 <div id="media-network-meta" class="media-network-meta">
                   <h3 id="config-media-network-heading">Media network</h3>
                   <div class="setting-meta">
-                    <div>Active mode: <strong id="media-network-active-mode">Loading...</strong></div>
-                    <div>RTC addresses: <strong id="media-network-active-address">Loading...</strong></div>
-                    <div>Saved mode: <strong id="media-network-saved-mode">Loading...</strong></div>
+                    <div><span class="media-network-stat-label">Active mode</span><strong id="media-network-active-mode">Loading...</strong></div>
+                    <div><span class="media-network-stat-label">RTC addresses</span><strong id="media-network-active-address">Loading...</strong></div>
+                    <div><span class="media-network-stat-label">Saved mode</span><strong id="media-network-saved-mode">Loading...</strong></div>
                     <div id="media-network-restart-hint">Changes require a server restart to take effect.</div>
                     <div id="media-network-override-hint" class="is-hidden">An environment override is active. Saved changes will only apply after restart without `PUBLIC_IP` or `TALKTOME_MEDIA_INTERFACE` overrides.</div>
                   </div>
                   <div id="media-network-warning" class="media-network-warning is-hidden" role="status"></div>
+                </div>
+
+                <div id="media-network-qr" class="media-network-qr-card is-hidden">
+                  <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
+                    <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
+                  </button>
+
+                </div>
+              </div>
 
               <form id="media-network-form" class="inline-form" autocomplete="off">
                 <div class="field-group field-group--stacked" id="media-network-mode-group">
@@ -3984,17 +4017,7 @@
                 </div>
 
                 <div id="media-network-actions">
-                  <button type="submit">Save</button>
-                </div>
-              </form>
-                </div>
-
-                <div id="media-network-qr" class="media-network-qr-card is-hidden">
-                  <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
-                    <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
-                  </button>
-                  <div class="media-network-qr-actions">
-                    <button type="button" id="media-network-qr-download" class="small media-network-qr-download" aria-label="Download connection QR code" title="Download QR code">
+                    <button type="button" id="media-network-qr-download" class="media-network-qr-download" aria-label="Download connection QR code" title="Download QR code">
                       <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 3.5V11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M6.75 8.5L10 11.75L13.25 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -4002,9 +4025,9 @@
                       </svg>
                       <span>Download QR</span>
                     </button>
-                  </div>
+                  <button type="submit">Save</button>
                 </div>
-              </div>
+              </form>
             </section>
 
             <section class="config-panel" aria-labelledby="config-rtc-ports-heading">
