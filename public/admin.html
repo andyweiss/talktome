@@ -949,6 +949,47 @@
         margin-inline: auto;
       }
 
+      @media (min-width: 1024px) {
+        #config-network-panel > .config-layout {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #config-network-panel > .config-layout > .config-panel {
+          grid-column: 1 / -1;
+        }
+
+        #config-network-panel > .config-layout > [aria-labelledby="config-rtc-ports-heading"] {
+          grid-column: 1;
+        }
+
+        #config-network-panel > .config-layout > [aria-labelledby="config-network-heading"] {
+          grid-column: 2;
+        }
+
+        #config-network-panel .rtc-port-form {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+        }
+
+        #config-network-panel .rtc-port-form input,
+        #config-network-panel #mdns-host {
+          min-width: 0;
+        }
+
+        #config-network-panel #mdns-form .field-group {
+          flex-direction: column;
+          gap: 0;
+        }
+
+        #config-network-panel #mdns-form label {
+          align-self: flex-start;
+          margin-bottom: 0.35rem;
+        }
+
+        #config-network-panel #mdns-host {
+          width: 100%;
+        }
+      }
+
       .config-panel {
         display: flex;
         flex-direction: column;
