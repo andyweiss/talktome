@@ -6289,7 +6289,7 @@ function isLikelyIPv4Address(value) {
   return typeof value === "string" && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value.trim());
 }
 
-function buildSelfSignedTlsCertificate() {
+async function buildSelfSignedTlsCertificate() {
   const configuredPublicIp = typeof process.env.PUBLIC_IP === "string"
     ? process.env.PUBLIC_IP.trim()
     : "";
@@ -6326,13 +6326,8 @@ function buildSelfSignedTlsCertificate() {
   return selfsigned.generate(
     [{ name: "commonName", value: preferredCommonName }],
     {
-      // A 4096-bit key is needlessly expensive for the locally trusted,
-      // self-signed certificate.  On slower Windows machines node-forge
-      // creates it synchronously and the first launch looks like a hung app
-      // for tens of seconds.  2048-bit RSA remains broadly compatible with
-      // browsers while making first-run certificate creation near-instant.
+      // Native WebCrypto generates the key asynchronously without blocking startup.
       keySize: 2048,
-      days: 365,
       algorithm: "sha256",
       extensions: [
         { name: "basicConstraints", cA: false },
@@ -6354,15 +6349,18 @@ function buildSelfSignedTlsCertificate() {
   );
 }
 
-const server = createWebServer(app, WEB_ACCESS, () => {
+// Attach routes and Socket.IO immediately, but listen only after TLS is ready.
+const server = createWebServer(app, WEB_ACCESS, () => ({}), mdnsHostname || "localhost");
+const tlsReadyPromise = (async () => {
+  if (WEB_ACCESS.tlsMode === "proxy") return;
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-    const pems = buildSelfSignedTlsCertificate();
+    const pems = await buildSelfSignedTlsCertificate();
     fs.writeFileSync(keyPath, pems.private, { mode: 0o600 });
     fs.writeFileSync(certPath, pems.cert, { mode: 0o600 });
     console.log("ℹ️  Generated self-signed TLS certificate in ./certs");
   }
-  return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
-}, mdnsHostname || "localhost");
+  server.setSecureContext({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) });
+})();
 const io = socketIO(server, { serveClient: false });
 
 companionNamespace = io.of("/companion");
@@ -9258,9 +9256,9 @@ function startWebServer() {
   server.listen(HTTPS_PORT, logWebServerReady);
 }
 
-mediaReadyPromise.then(startWebServer).catch((error) => {
+Promise.all([mediaReadyPromise, tlsReadyPromise]).then(startWebServer).catch((error) => {
   const message = error?.stack || error?.message || String(error);
-  console.error(`[INIT] mediasoup initialization failed: ${message}`);
+  console.error(`[INIT] Server initialization failed: ${message}`);
   try {
     worker?.close();
   } catch {}

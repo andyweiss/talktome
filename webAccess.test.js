@@ -32,6 +32,16 @@ test('forwarded origins are accepted only from allowlisted peers', () => {
   assert.equal(requestConnectOrigin(req, access), '');
 });
 
+test('IPv6 trust subnets cannot accidentally trust arbitrary IPv4 clients', () => {
+  for (const trustedProxies of ['::ffff:10.0.0.0/8', '::/1']) {
+    const access = resolveWebAccess({ trustedProxies }, {});
+    assert.equal(access.isTrustedProxy('203.0.113.10'), false);
+  }
+  const access = resolveWebAccess({ trustedProxies: '::ffff:10.0.0.0/104' }, {});
+  assert.equal(access.isTrustedProxy('10.0.0.2'), true);
+  assert.equal(access.isTrustedProxy('203.0.113.10'), false);
+});
+
 function request(client, port, path = '/') {
   return new Promise((resolve, reject) => {
     client.get({ hostname: '127.0.0.1', port, path, rejectUnauthorized: false, agent: false }, res => {
@@ -44,7 +54,7 @@ function request(client, port, path = '/') {
 
 for (const mode of ['internal', 'proxy']) {
   test(`${mode} serves app and Socket.IO with the selected transport`, async () => {
-    const certs = mode === 'internal' ? selfsigned.generate([{ name: 'commonName', value: 'localhost' }], { keySize: 2048, days: 1 }) : null;
+    const certs = mode === 'internal' ? await selfsigned.generate([{ name: 'commonName', value: 'localhost' }], { keySize: 2048 }) : null;
     const access = resolveWebAccess({ tlsMode: mode }, {});
     const server = createWebServer((req, res) => {
       res.end(req.url === '/login/options' ? JSON.stringify({ guestLogin: { enabled: false } }) : 'app');

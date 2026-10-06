@@ -1,11 +1,4 @@
 {
-  "allowedAdvisories": [
-    "https://github.com/advisories/GHSA-86w9-cpqp-85rv"
-  ],
-  "reviews": {
-    "https://github.com/advisories/GHSA-86w9-cpqp-85rv": {
-      "reviewedAt": "2026-10-05",
-      "reason": "node-forge has no patched release. Talktome uses it only through selfsigned to generate and verify its own local certificate with a generated 2048-bit RSA key. It does not verify attacker-supplied signatures or certificates; incoming TLS is handled by Node/OpenSSL. Revisit when a patched node-forge release is available."
-    }
-  }
+  "allowedAdvisories": [],
+  "reviews": {}
 }
