@@ -1510,7 +1510,7 @@
         grid-column: 2;
         grid-row: 1 / span 3;
         display: grid;
-        grid-template-columns: 6.5rem auto;
+        grid-template-columns: 6.5rem;
         gap: 0.5rem;
         align-items: end;
         max-width: 100%;
@@ -1552,19 +1552,6 @@
         height: 100%;
         width: 100%;
         object-fit: contain;
-      }
-
-      .config-panel button.media-network-qr-download {
-        width: 100%;
-        gap: 0.35rem;
-        padding-inline: 0.35rem;
-        white-space: nowrap;
-      }
-
-      .media-network-qr-download svg {
-        width: 1.05rem;
-        height: 1.05rem;
-        display: block;
       }
 
       .icon-button {
@@ -3495,7 +3482,7 @@
 
       @media (max-width: 480px) {
         .media-network-qr-card {
-          grid-template-columns: 5.5rem auto;
+          grid-template-columns: 5.5rem;
         }
 
         .config-auto-backup-footer {
@@ -4099,14 +4086,6 @@
                   <button type="button" id="media-network-qr-button" class="media-network-qr-button" aria-label="Open large connection QR code" disabled>
                     <img id="media-network-qr-image" class="media-network-qr-image" alt="Connection QR code" />
                   </button>
-                    <button type="button" id="media-network-qr-download" class="media-network-qr-download" aria-label="Download connection QR code" title="Download QR code">
-                      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 3.5V11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M6.75 8.5L10 11.75L13.25 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M4 14.25H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                      </svg>
-                      <span>Download</span>
-                    </button>
 
                 </div>
 

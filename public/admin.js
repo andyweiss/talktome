@@ -110,7 +110,6 @@ const mediaNetworkMeta = document.getElementById('media-network-meta');
 const mediaNetworkQrContainer = document.getElementById('media-network-qr');
 const mediaNetworkQrButton = document.getElementById('media-network-qr-button');
 const mediaNetworkQrImage = document.getElementById('media-network-qr-image');
-const mediaNetworkQrDownloadButton = document.getElementById('media-network-qr-download');
 const guestLoginEnabledInput = document.getElementById('guest-login-enabled');
 const guestLoginStatus = document.getElementById('guest-login-status');
 const guestLoginProfile = document.getElementById('guest-login-profile');
@@ -1207,18 +1206,6 @@ async function rasterizeQrDataUrlToPngBlob(dataUrl) {
   return blob;
 }
 
-async function downloadMediaNetworkQrImage() {
-  const dataUrl = currentMediaNetworkQrState?.renderedQrDataUrl || '';
-  if (!dataUrl) return;
-  try {
-    const blob = await rasterizeQrDataUrlToPngBlob(dataUrl);
-    triggerDownload(blob, buildMediaNetworkQrFilename('png'));
-  } catch (error) {
-    console.error('Failed to download media network QR image:', error);
-    showMessage('❌ Failed to download QR image', 'error', 'config');
-  }
-}
-
 async function downloadAdminImageLightboxImage() {
   const state = currentAdminImageLightboxState;
   if (!state?.dataUrl) return;
@@ -1283,7 +1270,6 @@ function renderMediaNetworkQr(payload = null) {
   if (!renderedQrDataUrl || !qrUrl) {
     mediaNetworkQrContainer.classList.add('is-hidden');
     mediaNetworkQrButton.disabled = true;
-    if (mediaNetworkQrDownloadButton) mediaNetworkQrDownloadButton.disabled = true;
     mediaNetworkQrButton.removeAttribute('aria-expanded');
     mediaNetworkQrButton.style.height = '';
     mediaNetworkQrImage.removeAttribute('src');
@@ -1296,7 +1282,6 @@ function renderMediaNetworkQr(payload = null) {
 
   mediaNetworkQrContainer.classList.remove('is-hidden');
   mediaNetworkQrButton.disabled = false;
-  if (mediaNetworkQrDownloadButton) mediaNetworkQrDownloadButton.disabled = false;
   mediaNetworkQrImage.src = renderedQrDataUrl;
   mediaNetworkQrImage.alt = `Connection QR code for ${qrUrl}`;
   mediaNetworkQrButton.setAttribute('aria-label', `Open large connection QR code for ${qrUrl}`);
@@ -5184,10 +5169,6 @@ setupMatrixInteractions(productionTargetMatrixContainer, '.production-target-tog
 
 if (mediaNetworkQrButton) {
   mediaNetworkQrButton.addEventListener('click', () => openMediaNetworkQrLightbox());
-}
-
-if (mediaNetworkQrDownloadButton) {
-  mediaNetworkQrDownloadButton.addEventListener('click', () => downloadMediaNetworkQrImage());
 }
 
 if (adminImageLightboxClose) {
