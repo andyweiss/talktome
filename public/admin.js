@@ -1304,22 +1304,11 @@ function renderMediaNetworkQr(payload = null) {
 }
 
 function syncMediaNetworkQrPreviewSize() {
-  if (!mediaNetworkQrContainer || !mediaNetworkQrButton || !mediaNetworkQrImage) return;
-
-  if (window.matchMedia('(max-width: 768px)').matches) {
-    mediaNetworkQrButton.style.height = '';
-    mediaNetworkQrImage.style.height = '';
-    mediaNetworkQrImage.style.width = '';
-    return;
-  }
-
-  const metaHeight = mediaNetworkMeta?.getBoundingClientRect?.().height || 0;
-  if (!metaHeight) return;
-
-  const nextHeight = Math.max(144, Math.round(metaHeight + 24));
-  mediaNetworkQrButton.style.height = `${nextHeight}px`;
-  mediaNetworkQrImage.style.height = `${Math.max(nextHeight - 6, 128)}px`;
-  mediaNetworkQrImage.style.width = '100%';
+  if (!mediaNetworkQrButton || !mediaNetworkQrImage) return;
+  // The QR preview has a fixed CSS size, independent of the status text height.
+  mediaNetworkQrButton.style.removeProperty('height');
+  mediaNetworkQrImage.style.removeProperty('height');
+  mediaNetworkQrImage.style.removeProperty('width');
 }
 
 async function logoutAdmin(message) {
