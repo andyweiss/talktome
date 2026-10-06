@@ -1247,18 +1247,21 @@
       #media-network-form .media-adapter-options label {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.6rem;
         padding: 0.2rem 0;
         cursor: pointer;
         font-weight: 400;
       }
 
-      #media-network-form .media-adapter-options input {
+      #media-network-form .media-adapter-options .admin-switch input {
         flex: 0 0 auto;
-        width: 1rem;
-        height: 1rem;
-        margin: 0;
-        accent-color: var(--primary);
+        width: 1px;
+        height: 1px;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        margin: -1px;
       }
 
       #media-network-actions {

@@ -2992,11 +2992,18 @@ function renderMediaInterfaceOptions(container, interfaces, selectedName) {
     const label = document.createElement('label');
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.setAttribute('role', 'switch');
     checkbox.value = name;
     checkbox.checked = selected.has(name);
     const text = document.createElement('span');
     text.textContent = description;
-    label.append(checkbox, text);
+    const control = document.createElement('span');
+    control.className = 'admin-switch';
+    const track = document.createElement('span');
+    track.className = 'admin-switch__track';
+    track.setAttribute('aria-hidden', 'true');
+    control.append(checkbox, track);
+    label.append(text, control);
     container.append(label);
   }
   if (!entries.size) container.textContent = 'No network adapters available';
