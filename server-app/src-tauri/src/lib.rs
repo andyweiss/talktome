@@ -391,7 +391,7 @@ fn normalized_runtime_config(
         return Err("Manual media network mode requires an announced address.".to_string());
     }
     if config.media_network_mode == "interface" && config.media_interface_name.is_none() {
-        return Err("Preferred media network adapter is required.".to_string());
+        return Err("A media network adapter must be selected.".to_string());
     }
     if config.media_network_mode != "manual" {
         config.media_announced_address = None;

@@ -106,7 +106,7 @@ function selectMediaRouteAddress(mediaRoute, localAddress) {
 
 function selectMdnsAddresses(mediaRoute, localAddresses = []) {
   // A public/manual RTC address need not belong to a local network interface.
-  // Only a preferred local adapter restricts the server's mDNS announcement.
+  // Only a selected local adapter restricts the server's mDNS announcement.
   const addresses = mediaRoute?.mode === "interface"
     ? [mediaRoute.announcedAddress]
     : localAddresses;
