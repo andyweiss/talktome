@@ -131,3 +131,13 @@ test("optionally exposes a separately bound internal address", () => {
     /bindable IPv4 or IPv6/
   );
 });
+
+test("selected adapters offer UDP and TCP on each chosen local address", () => {
+  const route = { mode: "interface", announcedAddress: "192.168.10.20", candidateAddresses: ["192.168.10.20", "10.20.30.40"] };
+  assert.deepEqual(buildWebRtcListenInfos({ mediaRoute: route, env: {} }), [
+    { protocol: "udp", ip: "192.168.10.20" },
+    { protocol: "udp", ip: "10.20.30.40" },
+    { protocol: "tcp", ip: "192.168.10.20" },
+    { protocol: "tcp", ip: "10.20.30.40" },
+  ]);
+});

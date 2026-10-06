@@ -103,7 +103,7 @@ On first interactive start, Talktome creates `config.json` and asks for:
 - HTTPS port
 - mDNS hostname, or `off`
 - RTC port range: start port and number of ports
-- WebRTC media network mode: automatic (all usable adapters), selected adapter, or manual announced IP/hostname
+- WebRTC media network mode: automatic (all usable adapters), selected adapters, or manual announced IP/hostname
 
 The same settings can be changed later in Admin `Config`.
 
@@ -111,8 +111,10 @@ In automatic media-network mode, Talktome offers every usable non-internal
 IPv4 adapter as a WebRTC ICE candidate. Clients on different attached networks
 can therefore select the server address they can reach and communicate through
 the same Talktome router. Link-local addresses are only used as a fallback when
-no regular adapter address is available. Selected-adapter and manual modes
-remain single-address modes for deterministic or NAT-facing deployments.
+no regular adapter address is available. Selected-adapter mode offers only the checked adapters and announces their addresses
+via mDNS. If one selected adapter is unavailable, the remaining selected adapters
+stay usable; other adapters are never added automatically. Manual mode offers one
+announced address for NAT-facing deployments.
 
 Useful environment overrides:
 
@@ -123,7 +125,7 @@ Useful environment overrides:
 - `HTTP_PORT`: redirect port, or `off`
 - `PUBLIC_IP`: manual WebRTC announced address
 - `MDNS_HOST`: mDNS hostname, or `off`
-- `TALKTOME_MEDIA_INTERFACE`: selected network adapter
+- `TALKTOME_MEDIA_INTERFACE`: selected network adapter names, comma-separated (for example `en0,en7`)
 - `TALKTOME_MEDIA_INTERNAL_IP`: optional bindable LAN address advertised in addition to `PUBLIC_IP`
 - `TALKTOME_RTC_PORT_START` and `TALKTOME_RTC_PORT_COUNT`: RTC range override
 - `TALKTOME_ICE_SERVERS_JSON`: browser STUN/TURN servers as standard `RTCIceServer` JSON

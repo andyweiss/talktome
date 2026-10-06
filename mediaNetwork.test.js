@@ -69,3 +69,20 @@ test("automatic and manual mDNS keep local addresses rather than announcing a pu
     assert.deepEqual(selectMdnsAddresses(route, localAddresses), ["192.168.10.20", "10.20.30.40"]);
   }
 });
+
+test("selected adapters expose exactly the chosen networks and keep remaining adapters usable", () => {
+  const route = resolveTransportMediaRoute({
+    env: { TALKTOME_MEDIA_INTERFACE: " en7, en0, en7, missing " }, availableInterfaces: interfaces,
+  });
+  assert.equal(route.interfaceName, "en7,en0,missing");
+  assert.equal(route.error, null);
+  assert.deepEqual(route.candidateAddresses, ["10.20.30.40", "192.168.10.20"]);
+  assert.deepEqual(selectMdnsAddresses(route, ["169.254.1.5"]), route.candidateAddresses);
+  assert.equal(selectMediaRouteAddress(route, "::ffff:192.168.10.20"), "192.168.10.20");
+  assert.equal(selectMediaRouteAddress(route, "169.254.1.5"), "10.20.30.40");
+  const missing = resolveTransportMediaRoute({
+    env: { TALKTOME_MEDIA_INTERFACE: "missing,other" }, availableInterfaces: interfaces,
+  });
+  assert.deepEqual(missing.candidateAddresses, []);
+  assert.ok(missing.error);
+});

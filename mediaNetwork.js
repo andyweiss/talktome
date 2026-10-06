@@ -40,6 +40,11 @@ function selectAutomaticMediaInterfaces(availableInterfaces = []) {
   return usable.length ? usable : availableInterfaces;
 }
 
+function normalizeMediaInterfaceNames(value) {
+  const values = Array.isArray(value) ? value : String(value || "").split(",");
+  return [...new Set(values.map(name => String(name || "").trim()).filter(Boolean))];
+}
+
 function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [] } = {}) {
   const explicitPublicIp = typeof env.PUBLIC_IP === "string" ? env.PUBLIC_IP.trim() : "";
   if (explicitPublicIp) {
@@ -54,30 +59,18 @@ function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [
     };
   }
 
-  const preferredInterfaceName = typeof env.TALKTOME_MEDIA_INTERFACE === "string"
-    ? env.TALKTOME_MEDIA_INTERFACE.trim()
-    : "";
-  if (preferredInterfaceName) {
-    const match = availableInterfaces.find((entry) => entry.name === preferredInterfaceName);
-    if (match) {
-      return {
-        announcedAddress: match.address,
-        candidateAddresses: [match.address],
-        interfaces: [match],
-        mode: "interface",
-        interfaceName: preferredInterfaceName,
-        source: env.TALKTOME_MEDIA_NETWORK_SOURCE || "config",
-        error: null,
-      };
-    }
+  const selectedNames = normalizeMediaInterfaceNames(env.TALKTOME_MEDIA_INTERFACE);
+  if (selectedNames.length) {
+    const matches = selectedNames.map(name => availableInterfaces.find(entry => entry.name === name)).filter(Boolean);
+    const candidateAddresses = [...new Set(matches.map(entry => entry.address))];
     return {
-      announcedAddress: null,
-      candidateAddresses: [],
-      interfaces: [],
+      announcedAddress: candidateAddresses[0] || null,
+      candidateAddresses,
+      interfaces: matches,
       mode: "interface",
-      interfaceName: preferredInterfaceName,
+      interfaceName: selectedNames.join(","),
       source: env.TALKTOME_MEDIA_NETWORK_SOURCE || "config",
-      error: `Configured media interface "${preferredInterfaceName}" has no usable IPv4 address`,
+      error: matches.length ? null : `Selected media interfaces "${selectedNames.join(", ")}" have no usable IPv4 address`,
     };
   }
 
@@ -96,7 +89,7 @@ function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [
 
 function selectMediaRouteAddress(mediaRoute, localAddress) {
   const fallback = String(mediaRoute?.announcedAddress || "").trim();
-  if (mediaRoute?.mode !== "auto") return fallback;
+  if (!["auto", "interface"].includes(mediaRoute?.mode)) return fallback;
   const normalizedLocalAddress = normalizeSocketAddress(localAddress);
   const candidates = Array.isArray(mediaRoute?.candidateAddresses)
     ? mediaRoute.candidateAddresses
@@ -108,12 +101,13 @@ function selectMdnsAddresses(mediaRoute, localAddresses = []) {
   // A public/manual RTC address need not belong to a local network interface.
   // Only a selected local adapter restricts the server's mDNS announcement.
   const addresses = mediaRoute?.mode === "interface"
-    ? [mediaRoute.announcedAddress]
+    ? (mediaRoute.candidateAddresses || [mediaRoute.announcedAddress])
     : localAddresses;
   return [...new Set(addresses.filter((address) => net.isIP(String(address || "")) === 4))];
 }
 
 module.exports = {
+  normalizeMediaInterfaceNames,
   isLinkLocalIpv4,
   listMediaNetworkInterfaces,
   normalizeSocketAddress,

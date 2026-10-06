@@ -3010,6 +3010,32 @@ function updateMediaNetworkFormVisibility() {
   }
 }
 
+function renderMediaInterfaceOptions(container, interfaces, selectedName) {
+  const selected = new Set(String(selectedName || '').split(',').map(name => name.trim()).filter(Boolean));
+  const entries = new Map();
+  for (const entry of interfaces || []) {
+    if (!entry?.name) continue;
+    const previous = entries.get(entry.name);
+    entries.set(entry.name, previous ? `${previous}, ${entry.address}` : (entry.label || `${entry.name} - ${entry.address}`));
+  }
+  for (const name of selected) {
+    if (!entries.has(name)) entries.set(name, `${name} (saved, unavailable)`);
+  }
+  container.replaceChildren();
+  for (const [name, description] of entries) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = name;
+    checkbox.checked = selected.has(name);
+    const text = document.createElement('span');
+    text.textContent = description;
+    label.append(checkbox, text);
+    container.append(label);
+  }
+  if (!entries.size) container.textContent = 'No network adapters available';
+}
+
 async function loadMediaNetworkSettings() {
   const payload = await fetchJSON('/admin/settings/media-network');
   const activeAddressEl = document.getElementById('media-network-active-address');
@@ -3036,14 +3062,7 @@ async function loadMediaNetworkSettings() {
     modeEl.value = savedMode;
   }
   if (interfaceEl) {
-    interfaceEl.innerHTML = '<option value="">Select adapter</option>';
-    availableInterfaces.forEach((entry) => {
-      const option = document.createElement('option');
-      option.value = entry.name;
-      option.textContent = entry.label || `${entry.name} - ${entry.address}`;
-      interfaceEl.appendChild(option);
-    });
-    interfaceEl.value = savedInterfaceName || '';
+    renderMediaInterfaceOptions(interfaceEl, availableInterfaces, savedInterfaceName);
   }
   if (addressEl) {
     addressEl.value = savedAddress;
@@ -4284,7 +4303,7 @@ document.getElementById('media-network-mode')?.addEventListener('change', () => 
 document.getElementById('media-network-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const mode = document.getElementById('media-network-mode')?.value || 'auto';
-  const mediaInterfaceName = document.getElementById('media-interface-name')?.value || '';
+  const mediaInterfaceName = Array.from(document.querySelectorAll('#media-interface-name input:checked'), input => input.value).join(',');
   const mediaAnnouncedAddress = document.getElementById('media-announced-address')?.value?.trim() || '';
 
   try {

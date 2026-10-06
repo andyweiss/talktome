@@ -3,6 +3,7 @@ const path = require("path");
 const net = require("net");
 const os = require("os");
 const readline = require("readline");
+const { normalizeMediaInterfaceNames } = require("./mediaNetwork");
 const { resolveServerAppVersion } = require("./appVersion");
 const { getDataDir } = require("./dataPaths");
 
@@ -144,8 +145,7 @@ function normalizeMediaNetworkMode(value) {
 }
 
 function normalizeMediaInterfaceName(value) {
-  const trimmed = String(value ?? "").trim();
-  return trimmed || "";
+  return normalizeMediaInterfaceNames(value).join(",");
 }
 
 function normalizeMediaAnnouncedAddress(value) {
@@ -187,8 +187,7 @@ function describeMediaNetworkSelection(selection, availableInterfaces) {
     return "automatic";
   }
   if (selection.mode === "interface") {
-    const match = availableInterfaces.find((entry) => entry.name === selection.interfaceName);
-    return match?.label || selection.interfaceName || "selected interface";
+    return normalizeMediaInterfaceNames(selection.interfaceName).map(name => availableInterfaces.find(entry => entry.name === name)?.label || name).join(", ") || "selected interfaces";
   }
   if (selection.mode === "manual") {
     return selection.announcedAddress || "manual address";

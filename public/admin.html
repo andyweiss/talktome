@@ -1228,6 +1228,38 @@
         max-width: 24rem;
       }
 
+      .media-interface-label {
+        flex: 0 0 8.5rem;
+        font-weight: 600;
+      }
+
+      .media-adapter-options {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 24rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      #media-network-form .media-adapter-options label {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.2rem 0;
+        cursor: pointer;
+        font-weight: 400;
+      }
+
+      #media-network-form .media-adapter-options input {
+        flex: 0 0 auto;
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+        accent-color: var(--primary);
+      }
+
       #media-network-actions {
         grid-column: 3;
         grid-row: 3;
@@ -4065,16 +4097,14 @@
                   <label for="media-network-mode">Mode</label>
                   <select id="media-network-mode" required>
                     <option value="auto">Automatic (all adapters)</option>
-                    <option value="interface">Selected network adapter</option>
+                    <option value="interface">Selected network adapters</option>
                     <option value="manual">Manual announced IP / hostname</option>
                   </select>
                 </div>
 
                 <div class="field-group field-group--stacked" id="media-interface-group">
-                  <label for="media-interface-name">Network adapter</label>
-                  <select id="media-interface-name">
-                    <option value="">Select adapter</option>
-                  </select>
+                  <span id="media-interface-label" class="media-interface-label">Network adapters</span>
+                  <div id="media-interface-name" class="media-adapter-options" role="group" aria-labelledby="media-interface-label"></div>
                 </div>
 
                 <div class="field-group field-group--stacked" id="media-announced-address-group">

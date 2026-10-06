@@ -483,11 +483,13 @@ fn admin_host_from_config(
             .map(str::trim)
             .filter(|name| !name.is_empty())
         {
-            if let Some(interface) = available_interfaces
-                .iter()
-                .find(|interface| interface.name == interface_name)
-            {
-                return interface.address.clone();
+            for selected_name in interface_name.split(',').map(str::trim) {
+                if let Some(interface) = available_interfaces
+                    .iter()
+                    .find(|interface| interface.name == selected_name)
+                {
+                    return interface.address.clone();
+                }
             }
         }
     }
@@ -579,6 +581,24 @@ mod admin_url_tests {
         assert_eq!(
             admin_url(&config, &interfaces),
             "https://10.0.0.15:443/admin"
+        );
+    }
+
+    #[test]
+    fn selected_adapters_use_the_first_available_selected_address() {
+        let config = ServerRuntimeConfig {
+            https_port: 8443,
+            media_network_mode: "interface".to_string(),
+            media_interface_name: Some("missing, en1, en0".to_string()),
+            ..ServerRuntimeConfig::default()
+        };
+        let interfaces = [
+            interface("en0", "192.168.1.20"),
+            interface("en1", "10.0.0.15"),
+        ];
+        assert_eq!(
+            admin_url(&config, &interfaces),
+            "https://10.0.0.15:8443/admin"
         );
     }
 

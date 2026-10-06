@@ -27,6 +27,7 @@ const {
   resolveTransportMediaRoute,
   selectMediaRouteAddress,
   selectMdnsAddresses,
+  normalizeMediaInterfaceNames,
 } = require("./mediaNetwork");
 const {
   producerDeliveryChanged,
@@ -605,8 +606,7 @@ function normalizeMediaNetworkMode(value) {
 }
 
 function normalizeMediaInterfaceName(value) {
-  const trimmed = String(value ?? "").trim();
-  return trimmed || "";
+  return normalizeMediaInterfaceNames(value).join(",");
 }
 
 function normalizeMediaAnnouncedAddress(value) {
@@ -6542,7 +6542,7 @@ function getStartupHosts() {
 
   const preferredTransportAddress = resolveTransportAnnouncedAddress();
   if (preferredTransportAddress.mode === "interface" && preferredTransportAddress.announcedAddress) {
-    return [preferredTransportAddress.announcedAddress];
+    return getActiveRtcAddresses(preferredTransportAddress);
   }
 
   if (isRunningInContainer()) {
@@ -6624,17 +6624,21 @@ function decodeDnsName(buffer, offset, depth = 0) {
 }
 
 function startMdnsResponder(hostname) {
+  const mediaRoute = resolveTransportAnnouncedAddress();
+  const addresses = selectMdnsAddresses(mediaRoute, getLocalIPv4Addresses());
+  if (mediaRoute.mode === "interface" && !addresses.length) {
+    throw new Error("Selected media adapters have no usable IPv4 address; mDNS announcement disabled");
+  }
+  const multicastInterfaces = mediaRoute.mode === "interface" ? addresses : [undefined];
+  const sockets = multicastInterfaces.map(address => createMdnsResponder(hostname, address));
+  return { close() { sockets.forEach(socket => socket.close()); } };
+}
+
+function createMdnsResponder(hostname, multicastInterface) {
   const questionName = hostname.toLowerCase();
   const getAdvertisedAddresses = () => selectMdnsAddresses(
     resolveTransportAnnouncedAddress(), getLocalIPv4Addresses()
   );
-  const mediaRoute = resolveTransportAnnouncedAddress();
-  const multicastInterface = mediaRoute.mode === "interface"
-    ? getAdvertisedAddresses()[0]
-    : undefined;
-  if (mediaRoute.mode === "interface" && !multicastInterface) {
-    throw new Error("Selected media adapter has no usable IPv4 address; mDNS announcement disabled");
-  }
   const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
   const CLASS_IN = 0x0001;
   const TYPE_A = 0x0001;
@@ -8457,7 +8461,7 @@ io.on("connection", (socket) => {
       if (mediaRoute.mode === "auto" && mediaRoute.interfaceName) {
         console.log(`[TRANSPORT] Auto-detected RTC addresses: ${getActiveRtcAddresses(mediaRoute).join(", ")}`);
       } else if (mediaRoute.mode === "interface") {
-        console.log(`[TRANSPORT] Using configured interface: ${mediaRoute.interfaceName}`);
+        console.log(`[TRANSPORT] Using selected interfaces: ${mediaRoute.interfaceName}`);
       }
       console.log(`[TRANSPORT] Offering RTC address(es): ${getActiveRtcAddresses(mediaRoute).join(", ")}`);
       warnIfDockerAnnouncedIpLooksInternal(mediaRoute.announcedAddress);
@@ -8506,7 +8510,7 @@ io.on("connection", (socket) => {
       if (mediaRoute.mode === "auto" && mediaRoute.interfaceName) {
         console.log(`[TRANSPORT] Auto-detected RTC addresses: ${getActiveRtcAddresses(mediaRoute).join(", ")}`);
       } else if (mediaRoute.mode === "interface") {
-        console.log(`[TRANSPORT] Using configured interface: ${mediaRoute.interfaceName}`);
+        console.log(`[TRANSPORT] Using selected interfaces: ${mediaRoute.interfaceName}`);
       }
       console.log(`[TRANSPORT] Offering RTC address(es): ${getActiveRtcAddresses(mediaRoute).join(", ")}`);
       warnIfDockerAnnouncedIpLooksInternal(mediaRoute.announcedAddress);
@@ -9220,7 +9224,7 @@ function logWebServerReady() {
   if (mediaRoute.error) {
     console.warn(`🎛️ Media network: ${mediaRoute.error}`);
   } else if (mediaRoute.mode === "interface") {
-    console.log(`🎛️ Media network: ${mediaRoute.interfaceName} → ${mediaRoute.announcedAddress}`);
+    console.log(`🎛️ Media network: ${mediaRoute.interfaceName} → ${getActiveRtcAddresses(mediaRoute).join(", ")}`);
   } else if (mediaRoute.mode === "manual") {
     console.log(`🎛️ Media network: manual → ${mediaRoute.announcedAddress}`);
   } else if (mediaRoute.announcedAddress) {

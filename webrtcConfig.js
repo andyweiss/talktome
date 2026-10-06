@@ -130,16 +130,16 @@ function buildWebRtcListenInfos({ mediaRoute, env = process.env } = {}) {
     throw new Error("A WebRTC announced address is required.");
   }
 
-  const automaticAddresses = mediaRoute?.mode === "auto"
+  const localAddresses = (mediaRoute?.mode === "auto" || (mediaRoute?.mode === "interface" && mediaRoute.candidateAddresses?.length > 1))
     ? [...new Set(
         (Array.isArray(mediaRoute?.candidateAddresses) ? mediaRoute.candidateAddresses : [])
           .map((address) => String(address || "").trim())
           .filter((address) => net.isIP(address) !== 0)
       )]
     : [];
-  if (automaticAddresses.length) {
+  if (localAddresses.length) {
     return ["udp", "tcp"].flatMap((protocol) => (
-      automaticAddresses.map((ip) => ({ protocol, ip }))
+      localAddresses.map((ip) => ({ protocol, ip }))
     ));
   }
 
