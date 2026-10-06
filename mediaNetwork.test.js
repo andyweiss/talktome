@@ -4,6 +4,7 @@ const {
   listMediaNetworkInterfaces,
   resolveTransportMediaRoute,
   selectMediaRouteAddress,
+  selectMdnsAddresses,
 } = require("./mediaNetwork");
 
 const interfaces = listMediaNetworkInterfaces({
@@ -47,4 +48,24 @@ test("bridge requests use the matching local interface in automatic mode", () =>
   const route = resolveTransportMediaRoute({ env: {}, availableInterfaces: interfaces });
   assert.equal(selectMediaRouteAddress(route, "::ffff:10.20.30.40"), "10.20.30.40");
   assert.equal(selectMediaRouteAddress(route, "127.0.0.1"), "192.168.10.20");
+});
+
+test("mDNS advertises only the selected local adapter without falling back when unavailable", () => {
+  const localAddresses = ["192.168.10.20", "10.20.30.40"];
+  const route = resolveTransportMediaRoute({
+    env: { TALKTOME_MEDIA_INTERFACE: "en7" }, availableInterfaces: interfaces,
+  });
+  assert.deepEqual(selectMdnsAddresses(route, localAddresses), ["10.20.30.40"]);
+  const missing = resolveTransportMediaRoute({
+    env: { TALKTOME_MEDIA_INTERFACE: "en9" }, availableInterfaces: interfaces,
+  });
+  assert.deepEqual(selectMdnsAddresses(missing, localAddresses), []);
+});
+
+test("automatic and manual mDNS keep local addresses rather than announcing a public RTC address", () => {
+  const localAddresses = ["192.168.10.20", "10.20.30.40", "192.168.10.20", "::1"];
+  for (const env of [{}, { PUBLIC_IP: "203.0.113.20" }, { PUBLIC_IP: "rtc.example.com" }]) {
+    const route = resolveTransportMediaRoute({ env, availableInterfaces: interfaces });
+    assert.deepEqual(selectMdnsAddresses(route, localAddresses), ["192.168.10.20", "10.20.30.40"]);
+  }
 });

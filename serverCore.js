@@ -26,6 +26,7 @@ const {
   normalizeSocketAddress,
   resolveTransportMediaRoute,
   selectMediaRouteAddress,
+  selectMdnsAddresses,
 } = require("./mediaNetwork");
 const {
   producerDeliveryChanged,
@@ -6624,6 +6625,16 @@ function decodeDnsName(buffer, offset, depth = 0) {
 
 function startMdnsResponder(hostname) {
   const questionName = hostname.toLowerCase();
+  const getAdvertisedAddresses = () => selectMdnsAddresses(
+    resolveTransportAnnouncedAddress(), getLocalIPv4Addresses()
+  );
+  const mediaRoute = resolveTransportAnnouncedAddress();
+  const multicastInterface = mediaRoute.mode === "interface"
+    ? getAdvertisedAddresses()[0]
+    : undefined;
+  if (mediaRoute.mode === "interface" && !multicastInterface) {
+    throw new Error("Selected media adapter has no usable IPv4 address; mDNS announcement disabled");
+  }
   const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
   const CLASS_IN = 0x0001;
   const TYPE_A = 0x0001;
@@ -6682,7 +6693,7 @@ function startMdnsResponder(hostname) {
         continue;
       }
 
-      const addresses = getLocalIPv4Addresses();
+      const addresses = getAdvertisedAddresses();
       if (!addresses.length) {
         return;
       }
@@ -6746,13 +6757,14 @@ function startMdnsResponder(hostname) {
 
   socket.bind({ address: "0.0.0.0", port: 5353, exclusive: false }, () => {
     try {
-      socket.addMembership("224.0.0.251");
+      socket.addMembership("224.0.0.251", multicastInterface);
+      if (multicastInterface) socket.setMulticastInterface(multicastInterface);
     } catch (err) {
       console.warn(`[mDNS] Unable to join multicast group: ${err.message}`);
     }
     socket.setMulticastTTL(255);
     socket.setMulticastLoopback(true);
-    console.log(`[mDNS] Advertising ${questionName} on ${getLocalIPv4Addresses().join(", ")}`);
+    console.log(`[mDNS] Advertising ${questionName} on ${getAdvertisedAddresses().join(", ")}`);
   });
 
   return socket;

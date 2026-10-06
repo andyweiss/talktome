@@ -104,6 +104,15 @@ function selectMediaRouteAddress(mediaRoute, localAddress) {
   return candidates.includes(normalizedLocalAddress) ? normalizedLocalAddress : fallback;
 }
 
+function selectMdnsAddresses(mediaRoute, localAddresses = []) {
+  // A public/manual RTC address need not belong to a local network interface.
+  // Only a preferred local adapter restricts the server's mDNS announcement.
+  const addresses = mediaRoute?.mode === "interface"
+    ? [mediaRoute.announcedAddress]
+    : localAddresses;
+  return [...new Set(addresses.filter((address) => net.isIP(String(address || "")) === 4))];
+}
+
 module.exports = {
   isLinkLocalIpv4,
   listMediaNetworkInterfaces,
@@ -111,4 +120,5 @@ module.exports = {
   resolveTransportMediaRoute,
   selectAutomaticMediaInterfaces,
   selectMediaRouteAddress,
+  selectMdnsAddresses,
 };
