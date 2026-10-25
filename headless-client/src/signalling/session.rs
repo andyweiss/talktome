@@ -1543,7 +1543,12 @@ impl Session {
         };
         match key {
             TargetKey::User(id) => self.online_users.contains(&id),
-            TargetKey::Conference(_) => true,
+            // Listen-only conferences are monitor targets, like feeds.
+            TargetKey::Conference(_) => self
+                .targets
+                .iter()
+                .find(|t| t.key == key)
+                .is_none_or(|t| t.can_talk),
             TargetKey::Feed(_) => false,
         }
     }

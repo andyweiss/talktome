@@ -763,7 +763,13 @@ async fn run_device(
                                 state.selected = Some(target);
                                 state.touch_volume_layer();
                                 relayout = true;
-                            } else if target.can_talk() {
+                            } else if target.can_talk()
+                                && snapshot
+                                    .targets
+                                    .iter()
+                                    .find(|t| t.key == target)
+                                    .is_none_or(|t| t.can_talk)
+                            {
                                 if matches!(target, TargetKey::User(_))
                                     && snapshot
                                         .targets
@@ -1471,7 +1477,7 @@ async fn render_lcd(
                     } else if target.incoming || target.receiving {
                         palette::INCOMING
                     } else {
-                        palette::VOLUME
+                        palette::IDLE
                     },
                 },
                 Some(EncoderBinding::Member { member, .. }) => StripSegment {
@@ -1483,14 +1489,14 @@ async fn render_lcd(
                     } else if member.muted {
                         palette::MUTED
                     } else {
-                        palette::MEMBERS
+                        palette::IDLE
                     },
                 },
                 None => StripSegment {
                     title: String::new(),
                     volume: 0.0,
                     muted: false,
-                    background: palette::OFFLINE,
+                    background: palette::GROUND,
                 },
             })
             .collect()

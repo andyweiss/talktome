@@ -1,4 +1,8 @@
 //! Renders key appearances and LCD strips to RGB images.
+//!
+//! Keys follow the web client's look: rounded slate cards on the navy page
+//! background, outlined function keys, and state colours drawn as a tint
+//! with a frame of the full colour (`.talking-to`, `.speaking`).
 
 use std::path::Path;
 
@@ -41,40 +45,38 @@ impl Renderer {
             (Some(alt), true) => alt,
             _ => appearance.background,
         };
+        let style = style(background);
         let margin = (w as f32 * 0.07) as u32;
-        let mut image = match accent(background) {
-            Some(accent) => {
-                let mut image = RgbImage::from_pixel(w, h, to_pixel(accent.fill));
-                if accent.frame {
-                    draw_frame(&mut image, 0, 0, w, h, margin.max(3), background);
-                }
-                image
-            }
-            None => RgbImage::from_pixel(w, h, to_pixel(background)),
-        };
+        let mut image = RgbImage::from_pixel(w, h, to_pixel(palette::GROUND));
+        draw_card(&mut image, 0, 0, w, h, &style);
 
         let mut text_bottom = h - margin;
         if let Some(bar) = appearance.bar {
-            let bar_h = (h as f32 * 0.09).max(3.0) as u32;
+            let bar_h = (h as f32 * 0.08).max(3.0) as u32;
             let y0 = h - margin - bar_h;
-            fill_rect(
+            draw_bar(
                 &mut image,
                 margin,
                 y0,
                 w - 2 * margin,
                 bar_h,
-                Rgb(20, 20, 24),
+                bar,
+                palette::BAR,
             );
-            let filled = ((w - 2 * margin) as f32 * bar.clamp(0.0, 1.0)) as u32;
-            fill_rect(&mut image, margin, y0, filled, bar_h, palette::BAR);
             text_bottom = y0 - margin / 2;
         }
 
         if let Some(badge) = appearance.badge {
             self.badge(&mut image, badge, margin);
         }
+        if let Some(marker) = appearance.marker {
+            let r = (w as f32 * 0.06).max(2.5);
+            let edge = margin as f32 + r;
+            fill_circle(&mut image, edge, edge, r, marker);
+        }
 
         if let Some(font) = &self.font {
+            let (title_color, subtitle_color) = text_colours(appearance.foreground, &style);
             let title_scale = (h as f32 * 0.24).max(9.0);
             let subtitle_scale = (h as f32 * 0.17).max(8.0);
             let has_subtitle = !appearance.subtitle.trim().is_empty();
@@ -94,7 +96,7 @@ impl Renderer {
                 + margin as f32 * 0.5;
             for line in lines {
                 let scale = fit_scale(font, &line, title_scale, (w - 2 * margin) as f32);
-                draw_text(&mut image, font, &line, scale, y, appearance.foreground);
+                draw_text(&mut image, font, &line, scale, y, title_color);
                 y += scale * 1.1;
             }
             if has_subtitle {
@@ -110,7 +112,7 @@ impl Renderer {
                     &appearance.subtitle,
                     scale,
                     y + 2.0,
-                    appearance.foreground,
+                    subtitle_color,
                 );
             }
         }
@@ -122,53 +124,54 @@ impl Renderer {
         let size = (w as f32 * 0.16).max(6.0) as u32;
         let x = w - margin - size;
         let y = margin;
+        let (cx, cy, r) = (
+            x as f32 + size as f32 / 2.0,
+            y as f32 + size as f32 / 2.0,
+            size as f32 / 2.0,
+        );
         match badge {
             Badge::Lock => {
-                fill_rect(
+                // Padlock: shackle ring above a rounded body.
+                let ring = size as f32 * 0.3;
+                fill_circle(image, cx, y as f32 + ring, ring, palette::LOCK);
+                fill_circle(
+                    image,
+                    cx,
+                    y as f32 + ring,
+                    (ring - (size as f32 * 0.14).max(1.5)).max(0.5),
+                    sample(image, cx, y as f32 - 1.0),
+                );
+                fill_round_rect(
                     image,
                     x,
-                    y + size / 3,
+                    y + size * 2 / 5,
                     size,
-                    size * 2 / 3,
-                    Rgb(250, 200, 60),
-                );
-                fill_rect(
-                    image,
-                    x + size / 4,
-                    y,
-                    size / 2,
-                    size / 3,
-                    Rgb(250, 200, 60),
-                );
-                fill_rect(
-                    image,
-                    x + size / 4 + 2,
-                    y + 2,
-                    (size / 2).saturating_sub(4),
-                    size / 3,
-                    palette::LOCKED,
+                    size - size * 2 / 5,
+                    size / 5,
+                    palette::LOCK,
                 );
             }
             Badge::Muted => {
-                fill_rect(image, x, y, size, size, Rgb(230, 60, 60));
-                for i in 0..size {
-                    if let Some(px) = image.get_pixel_mut_checked(x + i, y + i) {
-                        *px = to_pixel(palette::WHITE);
-                    }
-                    if let Some(px) = image.get_pixel_mut_checked(x + size - 1 - i, y + i) {
-                        *px = to_pixel(palette::WHITE);
-                    }
-                }
+                // Red dot with a white bar, like a "no entry" sign.
+                fill_circle(image, cx, cy, r, palette::MUTED);
+                let bar_h = (size / 5).max(1);
+                fill_rect(
+                    image,
+                    x + size / 4,
+                    y + (size - bar_h) / 2,
+                    size - size / 2,
+                    bar_h,
+                    palette::WHITE,
+                );
             }
-            Badge::OnAir => fill_rect(image, x, y, size, size, palette::WHITE),
-            Badge::Incoming => fill_rect(image, x, y, size, size, palette::WHITE),
+            Badge::OnAir | Badge::Incoming => fill_circle(image, cx, cy, r * 0.8, palette::WHITE),
         }
     }
 
     /// Renders the Stream Deck + touch strip: one segment per encoder.
     pub fn strip(&self, size: (u32, u32), segments: &[StripSegment]) -> RgbImage {
         let (w, h) = size;
-        let mut image = RgbImage::from_pixel(w, h, to_pixel(palette::OFFLINE));
+        let mut image = RgbImage::from_pixel(w, h, to_pixel(palette::GROUND));
         if segments.is_empty() {
             return image;
         }
@@ -186,50 +189,28 @@ impl Renderer {
                 (0, index as u32 * seg_h)
             };
             let margin = (seg_h.min(seg_w) as f32 * 0.1) as u32;
-            let (seg_x, seg_y) = (x0 + 1, y0 + 1);
-            let (inner_w, inner_h) = (seg_w.saturating_sub(2), seg_h.saturating_sub(2));
-            match accent(segment.background) {
-                Some(accent) => {
-                    fill_rect(&mut image, seg_x, seg_y, inner_w, inner_h, accent.fill);
-                    if accent.frame {
-                        let frame = (margin / 2).max(3);
-                        draw_frame(
-                            &mut image,
-                            seg_x,
-                            seg_y,
-                            inner_w,
-                            inner_h,
-                            frame,
-                            segment.background,
-                        );
-                    }
-                }
-                None => fill_rect(
-                    &mut image,
-                    seg_x,
-                    seg_y,
-                    inner_w,
-                    inner_h,
-                    segment.background,
-                ),
+            let gap = 2;
+            let style = style(segment.background);
+            draw_card(
+                &mut image,
+                x0 + gap,
+                y0 + gap,
+                seg_w.saturating_sub(2 * gap),
+                seg_h.saturating_sub(2 * gap),
+                &style,
+            );
+            if segment.background == palette::GROUND {
+                continue;
             }
-            let bar_h = (seg_h as f32 * 0.14).max(4.0) as u32;
+            let bar_h = (seg_h as f32 * 0.12).max(4.0) as u32;
             let bar_y = y0 + seg_h - margin - bar_h;
-            fill_rect(
+            draw_bar(
                 &mut image,
                 x0 + margin,
                 bar_y,
                 seg_w - 2 * margin,
                 bar_h,
-                Rgb(20, 20, 24),
-            );
-            let filled = ((seg_w - 2 * margin) as f32 * segment.volume.clamp(0.0, 1.0)) as u32;
-            fill_rect(
-                &mut image,
-                x0 + margin,
-                bar_y,
-                filled,
-                bar_h,
+                segment.volume,
                 if segment.muted {
                     palette::MUTED
                 } else {
@@ -237,6 +218,7 @@ impl Renderer {
                 },
             );
             if let Some(font) = &self.font {
+                let (title_color, subtitle_color) = text_colours(palette::IDLE_TEXT, &style);
                 let scale = (seg_h as f32 * 0.3).max(10.0);
                 let scale = fit_scale(font, &segment.title, scale, (seg_w - 2 * margin) as f32);
                 draw_text_at(
@@ -247,7 +229,7 @@ impl Renderer {
                     x0 as f32,
                     seg_w as f32,
                     y0 as f32 + margin as f32,
-                    palette::IDLE_TEXT,
+                    title_color,
                 );
                 let subtitle = if segment.muted {
                     "MUTED".to_string()
@@ -263,7 +245,7 @@ impl Renderer {
                     x0 as f32,
                     seg_w as f32,
                     y0 as f32 + margin as f32 + scale * 1.1,
-                    palette::IDLE_TEXT,
+                    subtitle_color,
                 );
             }
         }
@@ -279,50 +261,167 @@ pub struct StripSegment {
     pub background: Rgb,
 }
 
-/// How strongly a state colour tints the dark key. The web client uses 12%
-/// on a card; a key needs more to read from a distance.
+/// How strongly a state colour tints the card. The web client uses 12% on
+/// a card; a key needs more to read from a distance.
 const TALK_TINT: f32 = 0.35;
-/// Incoming green: a bit lighter and without a frame.
-const INCOMING_TINT: f32 = 0.45;
+const STATE_TINT: f32 = 0.3;
 
-struct Accent {
-    fill: Rgb,
-    /// Draw a frame in the full state colour around the tinted fill.
-    frame: bool,
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Frame {
+    /// No frame: a plain card.
+    None,
+    /// Thin outline, like the web client's buttons and offline cards.
+    Outline(Rgb),
+    /// Thick frame of the full state colour.
+    State(Rgb),
 }
 
-/// Talking, locked and incoming are drawn like the web client's target
-/// cards: a dark key tinted with the state colour instead of a solid neon
-/// key. Talking / locked keep a frame of the full colour.
-fn accent(color: Rgb) -> Option<Accent> {
-    let (tint, frame) = match color {
-        c if c == palette::TALKING || c == palette::LOCKED => (TALK_TINT, true),
-        c if c == palette::INCOMING => (INCOMING_TINT, false),
-        _ => return None,
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Style {
+    /// `None` leaves the key as page background (an empty key).
+    fill: Option<Rgb>,
+    frame: Frame,
+    /// Solid tally fill: white text instead of slate.
+    solid: bool,
+}
+
+/// Maps a palette role to how the key is drawn.
+fn style(color: Rgb) -> Style {
+    let tinted = |tint: f32, frame: bool| Style {
+        fill: Some(mix(palette::IDLE, color, tint)),
+        frame: if frame {
+            Frame::State(color)
+        } else {
+            Frame::None
+        },
+        solid: false,
     };
-    let mix =
-        |base: u8, accent: u8| (base as f32 * (1.0 - tint) + accent as f32 * tint).round() as u8;
-    let base = palette::IDLE;
-    Some(Accent {
-        fill: Rgb(
-            mix(base.0, color.0),
-            mix(base.1, color.1),
-            mix(base.2, color.2),
-        ),
-        frame,
-    })
+    match color {
+        c if c == palette::GROUND => Style {
+            fill: None,
+            frame: Frame::None,
+            solid: false,
+        },
+        c if c == palette::TALKING || c == palette::LOCKED => tinted(TALK_TINT, true),
+        c if c == palette::INCOMING
+            || c == palette::SELECTED
+            || c == palette::MENU
+            || c == palette::STATUS_BAD =>
+        {
+            tinted(STATE_TINT, true)
+        }
+        c if c == palette::MUTED => tinted(STATE_TINT, false),
+        c if c == palette::MENU_ITEM => Style {
+            fill: Some(color),
+            frame: Frame::Outline(palette::MENU_OUTLINE),
+            solid: false,
+        },
+        c if c == palette::CONTROL || c == palette::OFFLINE => Style {
+            fill: Some(color),
+            frame: Frame::Outline(palette::OUTLINE),
+            solid: false,
+        },
+        c if c == palette::ON_AIR || c == palette::PREVIEW || c == palette::REPLY => Style {
+            fill: Some(color),
+            frame: Frame::None,
+            solid: true,
+        },
+        _ => Style {
+            fill: Some(color),
+            frame: Frame::None,
+            solid: false,
+        },
+    }
 }
 
-fn draw_frame(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, width: u32, color: Rgb) {
-    let width = width.min(w / 2).min(h / 2);
-    fill_rect(image, x, y, w, width, color);
-    fill_rect(image, x, (y + h).saturating_sub(width), w, width, color);
-    fill_rect(image, x, y, width, h, color);
-    fill_rect(image, (x + w).saturating_sub(width), y, width, h, color);
+/// Title and subtitle colours. Keys that set their own foreground (offline
+/// text) keep it for both lines.
+fn text_colours(foreground: Rgb, style: &Style) -> (Rgb, Rgb) {
+    if foreground != palette::IDLE_TEXT {
+        (foreground, foreground)
+    } else if style.solid {
+        (palette::WHITE, palette::WHITE)
+    } else if matches!(style.frame, Frame::State(_)) || style.fill.is_none() {
+        (palette::IDLE_TEXT, palette::IDLE_TEXT)
+    } else {
+        (palette::IDLE_TEXT, palette::SUBTEXT)
+    }
+}
+
+fn mix(base: Rgb, color: Rgb, amount: f32) -> Rgb {
+    let mix =
+        |base: u8, color: u8| (base as f32 * (1.0 - amount) + color as f32 * amount).round() as u8;
+    Rgb(
+        mix(base.0, color.0),
+        mix(base.1, color.1),
+        mix(base.2, color.2),
+    )
+}
+
+/// Draws a rounded card with its frame into the given rectangle.
+fn draw_card(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, style: &Style) {
+    let Some(fill) = style.fill else { return };
+    let radius = (w.min(h) as f32 * 0.14) as u32;
+    let width = match style.frame {
+        Frame::None => 0,
+        Frame::Outline(_) => (w.min(h) as f32 / 36.0).round().max(1.0) as u32,
+        Frame::State(_) => (w.min(h) as f32 * 0.05).max(3.0) as u32,
+    };
+    match style.frame {
+        Frame::Outline(color) | Frame::State(color) => {
+            fill_round_rect(image, x, y, w, h, radius, color);
+            fill_round_rect(
+                image,
+                x + width,
+                y + width,
+                w.saturating_sub(2 * width),
+                h.saturating_sub(2 * width),
+                radius.saturating_sub(width),
+                fill,
+            );
+        }
+        Frame::None => fill_round_rect(image, x, y, w, h, radius, fill),
+    }
+}
+
+/// Volume bar: a rounded slate track with the level in `color`.
+fn draw_bar(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, level: f32, color: Rgb) {
+    fill_round_rect(image, x, y, w, h, h / 2, palette::BAR_TRACK);
+    let filled = (w as f32 * level.clamp(0.0, 1.0)) as u32;
+    if filled > 0 {
+        fill_round_rect(image, x, y, filled.max(h), h, h / 2, color);
+    }
 }
 
 fn to_pixel(rgb: Rgb) -> ImgRgb<u8> {
     ImgRgb([rgb.0, rgb.1, rgb.2])
+}
+
+fn sample(image: &RgbImage, x: f32, y: f32) -> Rgb {
+    let (w, h) = image.dimensions();
+    let px = image.get_pixel(
+        (x.max(0.0) as u32).min(w - 1),
+        (y.max(0.0) as u32).min(h - 1),
+    );
+    Rgb(px[0], px[1], px[2])
+}
+
+/// Blends `color` into one pixel with `coverage` (0..1) for smooth edges.
+fn blend_pixel(image: &mut RgbImage, x: u32, y: u32, color: Rgb, coverage: f32) {
+    if coverage <= 0.0 {
+        return;
+    }
+    let Some(pixel) = image.get_pixel_mut_checked(x, y) else {
+        return;
+    };
+    let coverage = coverage.min(1.0);
+    let blend =
+        |dst: u8, src: u8| (dst as f32 + (src as f32 - dst as f32) * coverage).round() as u8;
+    *pixel = ImgRgb([
+        blend(pixel[0], color.0),
+        blend(pixel[1], color.1),
+        blend(pixel[2], color.2),
+    ]);
 }
 
 fn fill_rect(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, color: Rgb) {
@@ -330,6 +429,49 @@ fn fill_rect(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, color: Rgb) {
     for yy in y..(y + h).min(ih) {
         for xx in x..(x + w).min(iw) {
             image.put_pixel(xx, yy, to_pixel(color));
+        }
+    }
+}
+
+/// Fills a rectangle with anti-aliased rounded corners of `radius`.
+fn fill_round_rect(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, radius: u32, color: Rgb) {
+    let r = radius.min(w / 2).min(h / 2) as f32;
+    let (left, top) = (x as f32, y as f32);
+    let (right, bottom) = (left + w as f32, top + h as f32);
+    for yy in y..y + h {
+        for xx in x..x + w {
+            let (px, py) = (xx as f32 + 0.5, yy as f32 + 0.5);
+            // Nearest corner centre when the pixel lies in a corner square.
+            let cx = if px < left + r {
+                Some(left + r)
+            } else if px > right - r {
+                Some(right - r)
+            } else {
+                None
+            };
+            let cy = if py < top + r {
+                Some(top + r)
+            } else if py > bottom - r {
+                Some(bottom - r)
+            } else {
+                None
+            };
+            let coverage = match (cx, cy) {
+                (Some(cx), Some(cy)) => r - ((px - cx).powi(2) + (py - cy).powi(2)).sqrt() + 0.5,
+                _ => 1.0,
+            };
+            blend_pixel(image, xx, yy, color, coverage);
+        }
+    }
+}
+
+fn fill_circle(image: &mut RgbImage, cx: f32, cy: f32, r: f32, color: Rgb) {
+    let x0 = (cx - r - 1.0).max(0.0) as u32;
+    let y0 = (cy - r - 1.0).max(0.0) as u32;
+    for yy in y0..(cy + r + 1.0) as u32 {
+        for xx in x0..(cx + r + 1.0) as u32 {
+            let d = ((xx as f32 + 0.5 - cx).powi(2) + (yy as f32 + 0.5 - cy).powi(2)).sqrt();
+            blend_pixel(image, xx, yy, color, r - d + 0.5);
         }
     }
 }
@@ -484,12 +626,13 @@ mod tests {
         incoming.blink = Some(palette::IDLE);
         let talk = renderer.key(&talking, (96, 96), false);
         let listen = renderer.key(&incoming, (96, 96), false);
-        // Web client look: talking has a full colour frame around a dark
-        // tint; incoming is a lighter green tint without a frame.
-        assert_eq!(talk.get_pixel(1, 1).0, [139, 92, 246]);
-        assert_eq!(talk.get_pixel(8, 8).0, [73, 60, 117]);
-        assert_eq!(listen.get_pixel(1, 1).0, [36, 112, 69]);
-        assert_eq!(listen.get_pixel(8, 8).0, [36, 112, 69]);
+        // Web client look: a full colour frame around the card tinted with
+        // the state colour; the rounded corners show the page background.
+        assert_eq!(talk.get_pixel(48, 1).0, [139, 92, 246]);
+        assert_eq!(talk.get_pixel(8, 48).0, [69, 59, 122]);
+        assert_eq!(listen.get_pixel(48, 1).0, [34, 197, 94]);
+        assert_eq!(listen.get_pixel(8, 48).0, [32, 88, 67]);
+        assert_eq!(talk.get_pixel(0, 0).0, [11, 17, 32]);
         if let Ok(dir) = std::env::var("TALKTOME_COLOUR_SWATCH_DIR") {
             let dir = std::path::PathBuf::from(dir);
             let _ = std::fs::create_dir_all(&dir);
@@ -524,13 +667,13 @@ mod tests {
                 title: "Crew".into(),
                 volume: 0.9,
                 muted: false,
-                background: palette::VOLUME,
+                background: palette::IDLE,
             },
             StripSegment {
                 title: "Cam 2".into(),
                 volume: 0.3,
                 muted: true,
-                background: palette::VOLUME,
+                background: palette::IDLE,
             },
         ];
         let image = renderer.strip((800, 100), &segments);
@@ -589,6 +732,23 @@ mod tests {
             muted: false,
             members: Vec::new(),
         });
+        snapshot.targets.push(TargetInfo {
+            key: TargetKey::Conference(2),
+            name: "Regie".into(),
+            can_talk: false,
+            online: true,
+            held: false,
+            locked: false,
+            incoming: false,
+            receiving: false,
+            volume: 0.5,
+            muted: false,
+            members: Vec::new(),
+        });
+        snapshot.targets[1].held = true;
+        snapshot.targets[2].locked = true;
+        snapshot.targets[3].online = false;
+        snapshot.targets[4].muted = true;
         snapshot.reply_target = Some(TargetKey::Conference(1));
         snapshot.reply_name = Some("News".into());
         snapshot.incoming = vec![IncomingInfo {
@@ -630,7 +790,7 @@ mod tests {
     #[test]
     fn composes_neo_and_plus_layouts() {
         use crate::surfaces::streamdeck::layout::{
-            layout, DeckState, Geometry, LayoutOptions, Role,
+            layout, DeckState, Geometry, LayoutOptions, MenuPage, Role,
         };
         use crate::talk::TargetKey;
         let renderer = renderer();
@@ -714,6 +874,29 @@ mod tests {
         compose_grid(&renderer, &keys, mk2.cols, 72)
             .save(dir.join("talktome-layout-mk2-eight.png"))
             .unwrap();
+        let mut menu_snapshot = snapshot.clone();
+        menu_snapshot.productions = ["SRF News", "Sport", "Meteo"]
+            .into_iter()
+            .map(|name| crate::state::ProductionInfo {
+                id: name.to_lowercase(),
+                name: name.into(),
+            })
+            .collect();
+        for (page, file) in [
+            (MenuPage::Root, "talktome-layout-menu-root.png"),
+            (
+                MenuPage::Productions,
+                "talktome-layout-menu-productions.png",
+            ),
+            (MenuPage::Info, "talktome-layout-menu-info.png"),
+        ] {
+            let mut menu = DeckState::default();
+            menu.open_menu(page);
+            let keys = layout(&mk2, &menu_snapshot, &menu, &options);
+            compose_grid(&renderer, &keys, mk2.cols, 72)
+                .save(dir.join(file))
+                .unwrap();
+        }
         let mut five = snapshot.clone();
         five.targets.truncate(5);
         let keys = layout(&mk2, &five, &DeckState::default(), &options);
