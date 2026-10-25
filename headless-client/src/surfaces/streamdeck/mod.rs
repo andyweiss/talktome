@@ -29,7 +29,7 @@ use crate::talk::TargetKey;
 use layout::{
     conference_members, encoder_bindings, encoder_page_count, menu_item_count, page_count, palette,
     volume_toggle_defers_to_release, Appearance, DeckState, EncoderBinding, Geometry, KeySpec,
-    LayoutOptions, MenuPage, Role,
+    LayoutOptions, MenuPage, Role, LISTEN_ONLY_NOTICE,
 };
 use render::{Renderer, StripSegment};
 use tokio::sync::mpsc;
@@ -708,6 +708,7 @@ async fn run_device(
                 if state.expire_volume_layer(volume_timeout)
                     || state.expire_member_layer(volume_timeout)
                     || state.expire_menu(volume_timeout)
+                    || state.expire_listen_only(LISTEN_ONLY_NOTICE)
                 {
                     relayout = true;
                 }
@@ -788,6 +789,10 @@ async fn run_device(
                                         })
                                         .await;
                                 }
+                            } else if matches!(target, TargetKey::Conference(_)) {
+                                // Listen-only conference: say so instead of muting it.
+                                state.show_listen_only(target);
+                                relayout = true;
                             } else {
                                 let _ = bus.commands.send(Command::MuteToggle(target)).await;
                             }

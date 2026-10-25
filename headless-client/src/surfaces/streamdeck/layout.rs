@@ -218,7 +218,13 @@ pub struct DeckState {
     pub local_ip: Option<String>,
     pub selected: Option<TargetKey>,
     pub blink_phase: bool,
+    /// Listen-only conference that was pressed; its key reads LISTEN ONLY
+    /// until `LISTEN_ONLY_NOTICE` has passed.
+    pub listen_only_notice: Option<(TargetKey, Instant)>,
 }
+
+/// How long a pressed listen-only conference shows LISTEN ONLY.
+pub const LISTEN_ONLY_NOTICE: Duration = Duration::from_secs(4);
 
 impl Default for DeckState {
     fn default() -> Self {
@@ -238,6 +244,7 @@ impl Default for DeckState {
             local_ip: None,
             selected: None,
             blink_phase: false,
+            listen_only_notice: None,
         }
     }
 }
@@ -257,6 +264,21 @@ impl DeckState {
 
     pub fn close_member_layer(&mut self) {
         self.member_layer = false;
+    }
+
+    pub fn show_listen_only(&mut self, target: TargetKey) {
+        self.listen_only_notice = Some((target, Instant::now()));
+    }
+
+    pub fn expire_listen_only(&mut self, after: Duration) -> bool {
+        if self
+            .listen_only_notice
+            .is_some_and(|(_, since)| since.elapsed() >= after)
+        {
+            self.listen_only_notice = None;
+            return true;
+        }
+        false
     }
 
     pub fn expire_volume_layer(&mut self, timeout: Duration) -> bool {
@@ -822,6 +844,12 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
     if !target.can_talk {
         appearance.subtitle = volume_label;
         appearance.bar = Some(target.volume);
+    }
+    if state
+        .listen_only_notice
+        .is_some_and(|(key, _)| key == target.key)
+    {
+        appearance.subtitle = "LISTEN ONLY".into();
     }
     // Muted reads the same on every target. Talk keys still show talking
     // and incoming over it; a listen-only key has nothing else to show.
@@ -1447,6 +1475,25 @@ mod tests {
         // A talk key keeps showing talk over mute.
         snapshot.targets[1].held = true;
         assert_eq!(look(&snapshot, 1).background, palette::TALKING);
+    }
+
+    #[test]
+    fn pressed_listen_only_conference_says_so_for_a_while() {
+        let mut snapshot = snapshot(1);
+        snapshot.targets[0].key = TargetKey::Conference(7);
+        snapshot.targets[0].can_talk = false;
+        let mut state = DeckState::default();
+        let volume = target_appearance(&snapshot.targets[0], &state, &snapshot).subtitle;
+        state.show_listen_only(TargetKey::Conference(7));
+        let notice = target_appearance(&snapshot.targets[0], &state, &snapshot);
+        assert_eq!(notice.subtitle, "LISTEN ONLY");
+        assert_eq!(notice.badge, None);
+        assert!(!state.expire_listen_only(LISTEN_ONLY_NOTICE));
+        assert!(state.expire_listen_only(Duration::ZERO));
+        assert_eq!(
+            target_appearance(&snapshot.targets[0], &state, &snapshot).subtitle,
+            volume
+        );
     }
 
     fn options() -> LayoutOptions {
