@@ -58,10 +58,13 @@ impl Renderer {
         let mut text_bottom = h - margin;
         if appearance.bar.is_some() || appearance.marker.is_some() || appearance.badge.is_some() {
             let row_h = (h as f32 * 0.12).max(5.0) as u32;
-            let row_y = h - margin - row_h;
-            let gap = (margin / 2).max(2);
-            let mut x = margin;
-            let mut right = w - margin;
+            // Clear of a state frame, and one more pixel sideways for the
+            // rounded corners.
+            let inset = margin.max(frame_width(&style, w, h) + 2);
+            let row_y = h - inset - row_h;
+            let gap = (row_h / 2).max(2);
+            let mut x = inset + 1;
+            let mut right = w - inset - 1;
             if let Some(marker) = appearance.marker {
                 let r = row_h as f32 / 2.0;
                 fill_circle(&mut image, x as f32 + r, row_y as f32 + r, r, marker);
@@ -140,6 +143,10 @@ impl Renderer {
         let Some(font) = &self.font else { return };
         let label = "MUTED";
         let scale = fit_scale(font, label, h as f32 * 1.05, w as f32 - h as f32);
+        if scale < 7.0 {
+            // Too small to read: the red pill alone says muted.
+            return;
+        }
         // Centre the capitals vertically: cap height is about 0.73 em.
         let ascent = font.as_scaled(PxScale::from(scale)).ascent();
         let top = y as f32 + (h as f32 + scale * 0.73) / 2.0 - ascent;
@@ -164,22 +171,21 @@ impl Renderer {
         );
         match badge {
             Badge::Lock => {
-                // Padlock: shackle ring above a rounded body.
+                // Padlock: a shackle ring (open in the middle) above a
+                // rounded body that covers its lower half.
                 let ring = size as f32 * 0.3;
-                fill_circle(image, cx, y as f32 + ring, ring, palette::LOCK);
-                fill_circle(
-                    image,
-                    cx,
-                    y as f32 + ring,
-                    (ring - (size as f32 * 0.14).max(1.5)).max(0.5),
-                    sample(image, cx, y as f32 - 1.0),
-                );
+                let ring_cy = y as f32 + ring + 0.5;
+                let inside = sample(image, cx, ring_cy);
+                let thickness = (size as f32 * 0.13).max(1.2);
+                fill_circle(image, cx, ring_cy, ring, palette::LOCK);
+                fill_circle(image, cx, ring_cy, (ring - thickness).max(0.0), inside);
+                let body_y = y + size * 2 / 5;
                 fill_round_rect(
                     image,
                     x,
-                    y + size * 2 / 5,
+                    body_y,
                     size,
-                    size - size * 2 / 5,
+                    size - (body_y - y),
                     size / 5,
                     palette::LOCK,
                 );
@@ -380,15 +386,19 @@ fn mix(base: Rgb, color: Rgb, amount: f32) -> Rgb {
     )
 }
 
+fn frame_width(style: &Style, w: u32, h: u32) -> u32 {
+    match style.frame {
+        Frame::None => 0,
+        Frame::Outline(_) => (w.min(h) as f32 / 36.0).round().max(1.0) as u32,
+        Frame::State(_) => (w.min(h) as f32 * 0.05).max(3.0) as u32,
+    }
+}
+
 /// Draws a rounded card with its frame into the given rectangle.
 fn draw_card(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, style: &Style) {
     let Some(fill) = style.fill else { return };
     let radius = (w.min(h) as f32 * 0.14) as u32;
-    let width = match style.frame {
-        Frame::None => 0,
-        Frame::Outline(_) => (w.min(h) as f32 / 36.0).round().max(1.0) as u32,
-        Frame::State(_) => (w.min(h) as f32 * 0.05).max(3.0) as u32,
-    };
+    let width = frame_width(style, w, h);
     match style.frame {
         Frame::Outline(color) | Frame::State(color) => {
             fill_round_rect(image, x, y, w, h, radius, color);
@@ -629,8 +639,8 @@ mod tests {
         appearance.bar = Some(1.0);
         appearance.marker = Some(palette::FEED_DOT);
         let key = renderer.key(&appearance, (96, 96), false);
-        // 96 px: margin 6, row 11 px from y 79; dot spans x 6..17, bar
-        // starts after a 3 px gap.
+        // 96 px: inset 6, row 11 px from y 79; dot spans x 7..18, bar
+        // starts after a 5 px gap.
         let row_mid = 79 + 5;
         assert_eq!(key.get_pixel(11, row_mid).0, [100, 116, 139]);
         assert_eq!(key.get_pixel(18, row_mid).0, [31, 41, 55]);
@@ -645,14 +655,34 @@ mod tests {
         // Nothing drawn in the top-right corner.
         assert_eq!(muted.get_pixel(84, 12).0, [31, 41, 55]);
 
-        // Other badges sit right of a shorter bar: bar ends at x 76, gap,
-        // padlock from x 79.
+        // Other badges sit right of a shorter bar: bar ends at x 73, a
+        // 5 px gap, padlock from x 78.
         appearance.badge = Some(Badge::Lock);
         let locked = renderer.key(&appearance, (96, 96), false);
-        assert_eq!(locked.get_pixel(75, row_mid).0, [96, 165, 250]);
-        assert_eq!(locked.get_pixel(77, row_mid).0, [31, 41, 55]);
+        assert_eq!(locked.get_pixel(71, row_mid).0, [96, 165, 250]);
+        assert_eq!(locked.get_pixel(75, row_mid).0, [31, 41, 55]);
         assert_eq!(locked.get_pixel(84, 86).0, [251, 191, 36]);
         assert_eq!(locked.get_pixel(84, 12).0, [31, 41, 55]);
+    }
+
+    #[test]
+    fn status_row_keeps_clear_of_a_state_frame() {
+        let renderer = renderer();
+        let mut appearance = Appearance::blank();
+        appearance.background = palette::LOCKED;
+        appearance.bar = Some(0.5);
+        appearance.badge = Some(Badge::Lock);
+        appearance.marker = Some(palette::USER_DOT);
+        let key = renderer.key(&appearance, (48, 48), false);
+        // 48 px: 3 px frame, row 5 px high from y 38. The line between the
+        // row and the frame stays the tinted key colour, also under the
+        // padlock in the bottom-right corner.
+        let tint = [58, 41, 112];
+        for x in [8, 24, 40] {
+            assert_eq!(key.get_pixel(x, 44).0, tint, "x {x}");
+        }
+        assert_eq!(key.get_pixel(46, 40).0, [109, 40, 217]);
+        assert_eq!(key.get_pixel(43, 40).0, tint);
     }
 
     #[test]
