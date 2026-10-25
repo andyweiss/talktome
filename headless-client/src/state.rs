@@ -160,6 +160,9 @@ pub struct Snapshot {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub main_unavailable: bool,
     pub incoming: Vec<IncomingInfo>,
+    /// Who addressed us most recently; kept after they stop talking.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_caller: Option<String>,
     /// Peak input level in dBFS for meters / VOX display.
     pub input_level_db: f32,
     pub media: Option<MediaInfo>,
@@ -200,6 +203,7 @@ impl Snapshot {
             main_target: None,
             main_unavailable: false,
             incoming: Vec::new(),
+            last_caller: None,
             input_level_db: -100.0,
             media: None,
             registered_since_unix: None,

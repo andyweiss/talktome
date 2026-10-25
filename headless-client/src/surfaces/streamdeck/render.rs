@@ -83,7 +83,7 @@ impl Renderer {
             let width = right.saturating_sub(x);
             if muted {
                 self.mute_pill(&mut image, x, row_y, width, row_h);
-            } else if let Some(bar) = appearance.bar {
+            } else if let (Some(bar), true) = (appearance.bar, footer.is_empty()) {
                 let bar_h = (h as f32 * 0.08).max(3.0) as u32;
                 draw_bar(
                     &mut image,
@@ -96,20 +96,25 @@ impl Renderer {
                 );
             }
             text_bottom = row_y - margin / 2;
-            if let (Some(font), false) = (&self.font, footer.is_empty()) {
-                // Small capitals sitting on the bottom of the row, centred
-                // between dot and badge.
+            if let (Some(font), false) = (&self.font, footer.is_empty() || muted) {
+                // Small text sitting on the bottom of the row: next to the
+                // type dot when there is one, else centred.
                 let (_, colour) = text_colours(appearance.foreground, &style);
                 let scale = fit_scale(font, footer, (h as f32 * 0.15).max(8.0), width as f32);
                 let ascent = font.as_scaled(PxScale::from(scale)).ascent();
                 let baseline = (row_y + row_h) as f32;
+                let text_w = if appearance.marker.is_some() {
+                    text_width(font, footer, scale).min(width as f32)
+                } else {
+                    width as f32
+                };
                 draw_text_at(
                     &mut image,
                     font,
                     footer,
                     scale,
                     x as f32,
-                    width as f32,
+                    text_w,
                     baseline - ascent,
                     colour,
                 );

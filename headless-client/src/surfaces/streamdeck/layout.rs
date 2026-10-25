@@ -84,6 +84,8 @@ pub mod palette {
     pub const USER_DOT: Rgb = Rgb(68, 108, 194);
     pub const CONFERENCE_DOT: Rgb = Rgb(79, 155, 139);
     pub const FEED_DOT: Rgb = Rgb(100, 116, 139);
+    /// Listen-only conference: the admin UI's listen-only orange (`#f97316`).
+    pub const LISTEN_ONLY_DOT: Rgb = Rgb(249, 115, 22);
     /// Lock badge (`#fbbf24`).
     pub const LOCK: Rgb = Rgb(251, 191, 36);
 }
@@ -858,7 +860,8 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
     );
     // Listen-only keys (feeds and listen-only conferences) show their level
     // as a bar; the dB value only appears on the volume layer.
-    if !target.can_talk {
+    let listen_only_conference = !target.can_talk && matches!(target.key, TargetKey::Conference(_));
+    if !target.can_talk && !listen_only_conference {
         appearance.bar = Some(target.volume);
     }
     if state
@@ -876,9 +879,39 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
             appearance.blink = None;
         }
     }
-    appearance.marker = Some(type_marker(target.key));
-    let _ = snapshot;
+    appearance.marker = Some(if listen_only_conference {
+        palette::LISTEN_ONLY_DOT
+    } else {
+        type_marker(target.key)
+    });
+    // Who is talking into a conference, next to its dot (instead of the bar).
+    if !target.muted {
+        let speakers = conference_speakers(target, snapshot);
+        if !speakers.is_empty() {
+            appearance.footer = speakers.join(", ");
+        }
+    }
     appearance
+}
+
+/// Names of the people talking into a conference right now: those
+/// addressing it and members we receive audio from.
+fn conference_speakers(target: &TargetInfo, snapshot: &Snapshot) -> Vec<String> {
+    if !matches!(target.key, TargetKey::Conference(_)) {
+        return Vec::new();
+    }
+    let mut names: Vec<String> = snapshot
+        .incoming
+        .iter()
+        .filter(|incoming| incoming.target == Some(target.key))
+        .map(|incoming| incoming.from_name.clone())
+        .collect();
+    for member in target.members.iter().filter(|member| member.receiving) {
+        if !names.contains(&member.name) {
+            names.push(member.name.clone());
+        }
+    }
+    names
 }
 
 fn type_marker(key: TargetKey) -> Rgb {
@@ -985,6 +1018,12 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
             appearance.foreground = palette::OFFLINE_TEXT;
         }
     }
+    appearance.footer = snapshot
+        .incoming
+        .first()
+        .map(|incoming| incoming.from_name.clone())
+        .or_else(|| snapshot.last_caller.clone())
+        .unwrap_or_default();
     let reply_held = snapshot
         .reply_target
         .map(|key| snapshot.target(key).map(|t| t.held).unwrap_or(false))
@@ -1280,6 +1319,10 @@ pub fn layout(
             if let Some(key) = keys.get_mut(*slot as usize) {
                 key.role = Role::Target(target.key);
                 key.appearance = target_appearance(target, state, snapshot);
+                // Decks with dials show the level on the touch strip.
+                if geometry.encoders > 0 && !state.volume_layer {
+                    key.appearance.bar = None;
+                }
             }
         }
     }
@@ -1485,14 +1528,15 @@ mod tests {
         let listen_conference = look(&snapshot, 0);
         let talk_conference = look(&snapshot, 1);
         let feed = look(&snapshot, 2);
-        // Type dot follows the web client icons; listen-only is still a
-        // conference.
-        assert_eq!(listen_conference.marker, Some(palette::CONFERENCE_DOT));
+        // Type dot follows the web client icons; listen-only conferences
+        // use the admin UI's listen-only orange.
+        assert_eq!(listen_conference.marker, Some(palette::LISTEN_ONLY_DOT));
         assert_eq!(talk_conference.marker, Some(palette::CONFERENCE_DOT));
         assert_eq!(feed.marker, Some(palette::FEED_DOT));
-        // Listen-only keys share the feed layout: volume bar, no talk.
+        // Only feeds show their level; conferences show names only.
         assert_eq!(listen_conference.subtitle, feed.subtitle);
-        assert_eq!(listen_conference.bar, feed.bar);
+        assert!(feed.bar.is_some());
+        assert!(listen_conference.bar.is_none());
         assert!(talk_conference.bar.is_none());
         // Names only in normal operation; dB values on the volume layer.
         assert_eq!(feed.subtitle, "");
@@ -1519,6 +1563,75 @@ mod tests {
         // A talk key keeps showing talk over mute.
         snapshot.targets[1].held = true;
         assert_eq!(look(&snapshot, 1).background, palette::TALKING);
+    }
+
+    #[test]
+    fn decks_with_dials_leave_the_level_to_the_strip() {
+        let snapshot = snapshot(3);
+        let keys = layout(
+            &geometry("plus"),
+            &snapshot,
+            &DeckState::default(),
+            &options(),
+        );
+        let feed = keys
+            .iter()
+            .find(|key| key.role == Role::Target(TargetKey::Feed(2)))
+            .unwrap();
+        assert_eq!(feed.appearance.bar, None);
+        let keys = layout(
+            &geometry("mk2"),
+            &snapshot,
+            &DeckState::default(),
+            &options(),
+        );
+        let feed = keys
+            .iter()
+            .find(|key| key.role == Role::Target(TargetKey::Feed(2)))
+            .unwrap();
+        assert!(feed.appearance.bar.is_some());
+    }
+
+    #[test]
+    fn reply_names_the_current_or_last_caller() {
+        let mut snapshot = snapshot(1);
+        snapshot.incoming = vec![crate::state::IncomingInfo {
+            from_name: "jan".into(),
+            target: None,
+        }];
+        snapshot.last_caller = Some("oli".into());
+        assert_eq!(reply_appearance(&snapshot).footer, "jan");
+        snapshot.incoming.clear();
+        assert_eq!(reply_appearance(&snapshot).footer, "oli");
+        snapshot.last_caller = None;
+        assert_eq!(reply_appearance(&snapshot).footer, "");
+    }
+
+    #[test]
+    fn conference_key_names_who_is_talking_into_it() {
+        let mut snapshot = snapshot(1);
+        snapshot.targets[0].key = TargetKey::Conference(7);
+        snapshot.targets[0].incoming = true;
+        snapshot.incoming = vec![crate::state::IncomingInfo {
+            from_name: "jan".into(),
+            target: Some(TargetKey::Conference(7)),
+        }];
+        snapshot.targets[0].members = vec![ConferenceMemberInfo {
+            user_id: 3,
+            name: "oli".into(),
+            online: true,
+            receiving: true,
+            volume: 0.8,
+            muted: false,
+        }];
+        let state = DeckState::default();
+        let appearance = target_appearance(&snapshot.targets[0], &state, &snapshot);
+        assert_eq!(appearance.footer, "jan, oli");
+        assert_eq!(appearance.title, "T0");
+        snapshot.incoming.clear();
+        snapshot.targets[0].members.clear();
+        let appearance = target_appearance(&snapshot.targets[0], &state, &snapshot);
+        assert_eq!(appearance.footer, "");
     }
 
     #[test]

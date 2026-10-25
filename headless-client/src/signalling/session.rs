@@ -124,6 +124,7 @@ pub struct Session {
     online_users: BTreeSet<i64>,
     incoming: Vec<IncomingInfo>,
     incoming_keys: BTreeSet<TargetKey>,
+    last_caller: Option<String>,
     on_air: bool,
     preview: bool,
     server_version: Option<String>,
@@ -238,6 +239,7 @@ impl Session {
             online_users: BTreeSet::new(),
             incoming: Vec::new(),
             incoming_keys: BTreeSet::new(),
+            last_caller: None,
             on_air: false,
             preview: false,
             server_version: None,
@@ -1205,10 +1207,20 @@ impl Session {
             if let Some(key) = target {
                 self.incoming_keys.insert(key);
             }
-            if let Some(from) = entry.get("fromUserId").and_then(Value::as_i64) {
+            // Only a direct call lights the sender's user key; talking into
+            // a conference or feed lights that key alone.
+            let to_group = matches!(
+                target,
+                Some(TargetKey::Conference(_)) | Some(TargetKey::Feed(_))
+            );
+            if let (Some(from), false) = (entry.get("fromUserId").and_then(Value::as_i64), to_group)
+            {
                 self.incoming_keys.insert(TargetKey::User(from));
             }
             self.incoming.push(IncomingInfo { from_name, target });
+        }
+        if let Some(first) = self.incoming.first() {
+            self.last_caller = Some(first.from_name.clone());
         }
         let reply = state.get("replyTarget").and_then(|reply| {
             let kind = reply
@@ -2467,6 +2479,7 @@ impl Session {
             main_target: self.talk.main_target(),
             main_unavailable: self.talk.main_unavailable(),
             incoming: self.incoming.clone(),
+            last_caller: self.last_caller.clone(),
             input_level_db: self.input_level_db,
             media,
             registered_since_unix: self
