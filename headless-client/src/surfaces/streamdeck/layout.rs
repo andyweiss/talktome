@@ -63,8 +63,9 @@ pub mod palette {
     /// Entries listed inside the menu: dark key with a cyan outline.
     pub const MENU_ITEM: Rgb = Rgb(18, 36, 50);
     pub const MENU_OUTLINE: Rgb = Rgb(14, 116, 144);
-    /// Web client reply button (`#2563eb`), drawn solid.
-    pub const REPLY: Rgb = Rgb(37, 99, 235);
+    /// Reply: the web client's reply button blue a step darker (its hover
+    /// `#1d4ed8`), drawn solid, so it does not outshine state keys.
+    pub const REPLY: Rgb = Rgb(29, 78, 216);
     /// Selection and active layer (`#3b82f6`).
     pub const SELECTED: Rgb = Rgb(59, 130, 246);
     /// Warning (`#f59e0b`).

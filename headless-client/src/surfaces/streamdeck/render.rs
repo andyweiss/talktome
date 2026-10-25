@@ -293,6 +293,9 @@ pub struct StripSegment {
 /// a card; a key needs more to read from a distance.
 const TALK_TINT: f32 = 0.35;
 const STATE_TINT: f32 = 0.3;
+/// Incoming / receiving green: a bit stronger and without a frame, so a
+/// feed that always carries audio (PGM) does not sit in a permanent frame.
+const INCOMING_TINT: f32 = 0.4;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Frame {
@@ -331,11 +334,8 @@ fn style(color: Rgb) -> Style {
             solid: false,
         },
         c if c == palette::TALKING || c == palette::LOCKED => tinted(TALK_TINT, true),
-        c if c == palette::INCOMING
-            || c == palette::SELECTED
-            || c == palette::MENU
-            || c == palette::STATUS_BAD =>
-        {
+        c if c == palette::INCOMING => tinted(INCOMING_TINT, false),
+        c if c == palette::SELECTED || c == palette::MENU || c == palette::STATUS_BAD => {
             tinted(STATE_TINT, true)
         }
         c if c == palette::MUTED => tinted(STATE_TINT, false),
@@ -700,12 +700,13 @@ mod tests {
         incoming.blink = Some(palette::IDLE);
         let talk = renderer.key(&talking, (96, 96), false);
         let listen = renderer.key(&incoming, (96, 96), false);
-        // Web client look: a full colour frame around the card tinted with
-        // the state colour; the rounded corners show the page background.
+        // Web client look: talking has a full colour frame around the card
+        // tinted with the state colour; incoming is a green tint without a
+        // frame. The rounded corners show the page background.
         assert_eq!(talk.get_pixel(48, 1).0, [139, 92, 246]);
         assert_eq!(talk.get_pixel(8, 48).0, [69, 59, 122]);
-        assert_eq!(listen.get_pixel(48, 1).0, [34, 197, 94]);
-        assert_eq!(listen.get_pixel(8, 48).0, [32, 88, 67]);
+        assert_eq!(listen.get_pixel(48, 1).0, [32, 103, 71]);
+        assert_eq!(listen.get_pixel(8, 48).0, [32, 103, 71]);
         assert_eq!(talk.get_pixel(0, 0).0, [11, 17, 32]);
         if let Ok(dir) = std::env::var("TALKTOME_COLOUR_SWATCH_DIR") {
             let dir = std::path::PathBuf::from(dir);
