@@ -226,7 +226,7 @@ impl Renderer {
             }
             // Shown in the status row instead, see `mute_pill`.
             Badge::Muted => {}
-            Badge::OnAir | Badge::Incoming => fill_circle(image, cx, cy, r, palette::WHITE),
+            Badge::OnAir => fill_circle(image, cx, cy, r, palette::WHITE),
         }
     }
 
@@ -740,7 +740,6 @@ mod tests {
         incoming.background = palette::INCOMING;
         incoming.title = "News".into();
         incoming.subtitle = "incoming".into();
-        incoming.badge = Some(Badge::Incoming);
         incoming.blink = Some(palette::IDLE);
         let talk = renderer.key(&talking, (96, 96), false);
         let listen = renderer.key(&incoming, (96, 96), false);

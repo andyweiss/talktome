@@ -84,8 +84,9 @@ pub mod palette {
     pub const USER_DOT: Rgb = Rgb(68, 108, 194);
     pub const CONFERENCE_DOT: Rgb = Rgb(79, 155, 139);
     pub const FEED_DOT: Rgb = Rgb(100, 116, 139);
-    /// Listen-only conference: the admin UI's listen-only orange (`#f97316`).
-    pub const LISTEN_ONLY_DOT: Rgb = Rgb(249, 115, 22);
+    /// Listen-only conference: the admin UI's listen-only orange (`#f97316`)
+    /// toned down to sit with the other dots.
+    pub const LISTEN_ONLY_DOT: Rgb = Rgb(194, 96, 46);
     /// Lock badge (`#fbbf24`).
     pub const LOCK: Rgb = Rgb(251, 191, 36);
 }
@@ -95,7 +96,6 @@ pub enum Badge {
     Lock,
     Muted,
     OnAir,
-    Incoming,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -141,6 +141,9 @@ impl Appearance {
         self.blink = None;
         self.badge = None;
         self.bar = None;
+        if self.marker.is_some() {
+            self.marker = Some(palette::OFFLINE_TEXT);
+        }
     }
 }
 
@@ -856,7 +859,6 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
         target.incoming,
         target.receiving,
         palette::IDLE,
-        true,
     );
     // Listen-only keys (feeds and listen-only conferences) show their level
     // as a bar; the dB value only appears on the volume layer.
@@ -1028,7 +1030,6 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
         appearance.background = palette::TALKING;
     } else if !snapshot.incoming.is_empty() && appearance.background == palette::REPLY {
         appearance.blink = Some(palette::CONTROL);
-        appearance.badge = Some(Badge::Incoming);
     }
     appearance
 }
@@ -1042,15 +1043,11 @@ fn apply_talk_and_listen(
     incoming: bool,
     receiving: bool,
     listen_rest: Rgb,
-    incoming_badge: bool,
 ) {
     let listen = incoming || receiving;
     if listen {
         appearance.background = palette::INCOMING;
         appearance.blink = if incoming { Some(listen_rest) } else { None };
-        if incoming && incoming_badge {
-            appearance.badge = Some(Badge::Incoming);
-        }
     }
     if locked {
         appearance.background = palette::LOCKED;
@@ -1716,6 +1713,9 @@ mod tests {
             assert_eq!(key.appearance.foreground, palette::OFFLINE_TEXT);
             assert_eq!(key.appearance.badge, None);
             assert_eq!(key.appearance.bar, None);
+            if key.appearance.marker.is_some() {
+                assert_eq!(key.appearance.marker, Some(palette::OFFLINE_TEXT));
+            }
         }
         // The menu stays usable.
         let mut state = DeckState::default();
@@ -2227,7 +2227,7 @@ mod tests {
         assert_eq!(keys[0].appearance.subtitle, "ON AIR");
         assert_eq!(keys[0].appearance.background, palette::ON_AIR);
         let bottom = 3 * 8;
-        assert_eq!(keys[bottom].appearance.badge, Some(Badge::Incoming));
+        assert_eq!(keys[bottom].appearance.badge, None);
         assert_eq!(keys[bottom].appearance.background, palette::INCOMING);
         assert!(keys[bottom].appearance.blink.is_some());
         assert_eq!(keys[bottom + 1].appearance.background, palette::LOCKED);
@@ -2255,7 +2255,7 @@ mod tests {
         assert_eq!(keys[bottom].appearance.background, palette::TALKING);
         assert!(keys[bottom].appearance.blink.is_none());
         assert_eq!(keys[bottom + 1].appearance.background, palette::INCOMING);
-        assert_eq!(keys[bottom + 1].appearance.badge, Some(Badge::Incoming));
+        assert_eq!(keys[bottom + 1].appearance.badge, None);
         assert_eq!(keys[bottom + 2].appearance.background, palette::TALKING);
         assert_eq!(
             keys[bottom + 2].appearance.blink,
