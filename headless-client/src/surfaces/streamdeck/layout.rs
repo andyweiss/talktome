@@ -839,10 +839,9 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
         palette::IDLE,
         true,
     );
-    // Listen-only keys (feeds and listen-only conferences) look alike:
-    // volume instead of talk, pressing toggles mute.
+    // Listen-only keys (feeds and listen-only conferences) show their level
+    // as a bar; the dB value only appears on the volume layer.
     if !target.can_talk {
-        appearance.subtitle = volume_label;
         appearance.bar = Some(target.volume);
     }
     if state
@@ -1458,10 +1457,22 @@ mod tests {
         assert_eq!(listen_conference.marker, Some(palette::CONFERENCE_DOT));
         assert_eq!(talk_conference.marker, Some(palette::CONFERENCE_DOT));
         assert_eq!(feed.marker, Some(palette::FEED_DOT));
-        // Listen-only keys share the feed layout: volume, no talk.
+        // Listen-only keys share the feed layout: volume bar, no talk.
         assert_eq!(listen_conference.subtitle, feed.subtitle);
         assert_eq!(listen_conference.bar, feed.bar);
         assert!(talk_conference.bar.is_none());
+        // Names only in normal operation; dB values on the volume layer.
+        assert_eq!(feed.subtitle, "");
+        let volume_layer = DeckState {
+            volume_layer: true,
+            ..DeckState::default()
+        };
+        let feed_volume = target_appearance(&snapshot.targets[2], &volume_layer, &snapshot);
+        assert!(
+            feed_volume.subtitle.ends_with("dB"),
+            "{}",
+            feed_volume.subtitle
+        );
 
         // Muted looks the same on every kind of target.
         for target in &mut snapshot.targets {
