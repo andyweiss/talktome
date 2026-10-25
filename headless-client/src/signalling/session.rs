@@ -1219,9 +1219,6 @@ impl Session {
             }
             self.incoming.push(IncomingInfo { from_name, target });
         }
-        if let Some(first) = self.incoming.first() {
-            self.last_caller = Some(first.from_name.clone());
-        }
         let reply = state.get("replyTarget").and_then(|reply| {
             let kind = reply
                 .get("replyTargetType")
@@ -1232,11 +1229,33 @@ impl Session {
                 .or_else(|| reply.get("targetId"))?;
             TargetKey::from_type_and_id(kind, id)
         });
-        self.talk
-            .set_reply_target(crate::talk::TalkModel::resolve_reply_target(
-                reply,
-                self.incoming.iter().map(|incoming| incoming.target),
-            ));
+        // Calls into a listen-only conference cannot be answered there:
+        // they leave Reply (and the last caller) as they were.
+        let listen_only = |key: &TargetKey| {
+            matches!(key, TargetKey::Conference(_))
+                && self
+                    .targets
+                    .iter()
+                    .find(|t| t.key == *key)
+                    .is_some_and(|t| !t.can_talk)
+        };
+        let answerable: Vec<&IncomingInfo> = self
+            .incoming
+            .iter()
+            .filter(|incoming| !incoming.target.as_ref().is_some_and(listen_only))
+            .collect();
+        if let Some(first) = answerable.first() {
+            self.last_caller = Some(first.from_name.clone());
+        }
+        let only_listen_only = !self.incoming.is_empty() && answerable.is_empty();
+        let reply_listen_only = reply.as_ref().is_some_and(listen_only);
+        if !only_listen_only && !(reply_listen_only && answerable.is_empty()) {
+            let target = crate::talk::TalkModel::resolve_reply_target(
+                reply.filter(|key| !listen_only(key)),
+                answerable.iter().map(|incoming| incoming.target),
+            );
+            self.talk.set_reply_target(target);
+        }
         if let Ok(mut mixer) = self.io.mixer.lock() {
             mixer.set_dim_state(self.talk.is_talking(), !self.incoming.is_empty());
         }

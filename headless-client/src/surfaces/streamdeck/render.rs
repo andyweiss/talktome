@@ -141,10 +141,14 @@ impl Renderer {
             );
             // Over a volume bar the subtitle (dB value) sits at the bottom,
             // right above it, like on the touch strip; else under the title.
-            let sub_top = (appearance.bar.is_some() && has_subtitle)
+            let sub_top = ((appearance.bar.is_some() || appearance.subtitle_low) && has_subtitle)
                 .then(|| text_bottom as f32 - font.as_scaled(PxScale::from(sub_scale)).ascent());
             let title_bottom = sub_top.unwrap_or(text_bottom as f32);
-            let total = lines.len() as f32 * title_scale * 1.1
+            let line_scale = lines
+                .iter()
+                .map(|line| fit_scale(font, line, title_scale, (w - 2 * margin) as f32))
+                .fold(title_scale, f32::min);
+            let total = lines.len() as f32 * line_scale * 1.1
                 + if has_subtitle && sub_top.is_none() {
                     subtitle_scale * 1.2
                 } else {
@@ -153,9 +157,8 @@ impl Renderer {
             let mut y = ((title_bottom - margin as f32 - total) / 2.0).max(margin as f32)
                 + margin as f32 * 0.5;
             for line in lines {
-                let scale = fit_scale(font, &line, title_scale, (w - 2 * margin) as f32);
-                draw_text(&mut image, font, &line, scale, y, title_color);
-                y += scale * 1.1;
+                draw_text(&mut image, font, &line, line_scale, y, title_color);
+                y += line_scale * 1.1;
             }
             if has_subtitle {
                 draw_text(

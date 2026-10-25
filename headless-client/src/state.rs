@@ -271,7 +271,19 @@ impl Snapshot {
     /// never the caller’s display name. Matches the web client’s reply button.
     /// A Main pin that is missing from the destination list is "Unavailable target"
     /// and does not fall back to last incoming.
+    /// Incoming calls that concern Reply: a call into a listen-only
+    /// conference cannot be answered there, so it is left out.
+    pub fn reply_incoming(&self) -> impl Iterator<Item = &IncomingInfo> {
+        self.incoming.iter().filter(|incoming| {
+            !incoming.target.is_some_and(|key| {
+                matches!(key, TargetKey::Conference(_))
+                    && self.target(key).is_some_and(|target| !target.can_talk)
+            })
+        })
+    }
+
     pub fn reply_label(&self) -> Option<String> {
+        let incoming: Vec<&IncomingInfo> = self.reply_incoming().collect();
         let name_of = |key: TargetKey| self.target(key).map(|target| target.name.clone());
         if self.main_unavailable {
             return Some("Unavailable target".to_string());
@@ -294,8 +306,7 @@ impl Snapshot {
                 return Some(name);
             }
         }
-        if let Some(name) = self
-            .incoming
+        if let Some(name) = incoming
             .iter()
             .find_map(|incoming| incoming.target.and_then(conference_name))
         {
@@ -307,12 +318,10 @@ impl Snapshot {
             .map(str::trim)
             .filter(|name| !name.is_empty())
         {
-            let is_caller = self
-                .incoming
+            let is_caller = incoming
                 .iter()
                 .any(|incoming| incoming.from_name.eq_ignore_ascii_case(name));
-            let has_conference = self
-                .incoming
+            let has_conference = incoming
                 .iter()
                 .any(|incoming| matches!(incoming.target, Some(TargetKey::Conference(_))));
             if !(is_caller && has_conference) {
@@ -324,7 +333,7 @@ impl Snapshot {
                 return Some(name);
             }
         }
-        self.incoming
+        incoming
             .iter()
             .find_map(|incoming| incoming.target.and_then(name_of))
     }

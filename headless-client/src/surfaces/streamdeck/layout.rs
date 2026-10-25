@@ -113,6 +113,8 @@ pub struct Appearance {
     pub marker: Option<Rgb>,
     /// Small label in the status row (MENU, back, close).
     pub footer: String,
+    /// Subtitle sits at the bottom, right above the status row.
+    pub subtitle_low: bool,
 }
 
 impl Appearance {
@@ -127,6 +129,7 @@ impl Appearance {
             blink: None,
             marker: None,
             footer: String::new(),
+            subtitle_low: false,
         }
     }
 
@@ -1016,9 +1019,11 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
             appearance.foreground = palette::OFFLINE_TEXT;
         }
     }
+    // Conference name right above the caller.
+    appearance.subtitle_low = true;
     appearance.footer = snapshot
-        .incoming
-        .first()
+        .reply_incoming()
+        .next()
         .map(|incoming| incoming.from_name.clone())
         .or_else(|| snapshot.last_caller.clone())
         .unwrap_or_default();
@@ -1028,7 +1033,8 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
         .unwrap_or(false);
     if reply_held {
         appearance.background = palette::TALKING;
-    } else if !snapshot.incoming.is_empty() && appearance.background == palette::REPLY {
+    } else if snapshot.reply_incoming().next().is_some() && appearance.background == palette::REPLY
+    {
         appearance.blink = Some(palette::CONTROL);
     }
     appearance
@@ -1190,7 +1196,8 @@ fn appearance_for_role(
             .map(|production| production_appearance(production, snapshot))
             .unwrap_or_else(Appearance::blank),
         Role::ClearLocks => {
-            let mut a = Appearance::simple("CLEAR", palette::MENU_ITEM);
+            // Same look as CHANGE / production; greyed while nothing is locked.
+            let mut a = Appearance::simple("CLEAR", palette::MENU);
             a.subtitle = "locks".into();
             if snapshot.lock_active {
                 a.badge = Some(Badge::Lock);
@@ -1209,13 +1216,16 @@ fn appearance_for_role(
 }
 
 fn menu_entry_appearance(page: MenuPage) -> Appearance {
-    let title = match page {
-        MenuPage::Productions => "CHANGE PRODUCTION",
-        MenuPage::Info => "INFO",
-        MenuPage::Root => "MENU",
+    // Same look as the MENU / back key and CLEAR / locks: a short verb,
+    // the object below it.
+    let (title, subtitle) = match page {
+        MenuPage::Productions => ("CHANGE", "production"),
+        MenuPage::Info => ("INFO", ""),
+        MenuPage::Root => ("MENU", ""),
     };
-    // Same look as the MENU / back key: these keys move between menu screens.
-    Appearance::simple(title, palette::MENU)
+    let mut appearance = Appearance::simple(title, palette::MENU);
+    appearance.subtitle = subtitle.into();
+    appearance
 }
 
 fn info_appearance(line: &InfoLine) -> Appearance {
@@ -1586,6 +1596,27 @@ mod tests {
     }
 
     #[test]
+    fn reply_ignores_calls_into_listen_only_conferences() {
+        let mut snapshot = snapshot(1);
+        snapshot.targets[0].key = TargetKey::Conference(7);
+        snapshot.targets[0].name = "Regie".into();
+        snapshot.targets[0].can_talk = false;
+        snapshot.incoming = vec![crate::state::IncomingInfo {
+            from_name: "jan".into(),
+            target: Some(TargetKey::Conference(7)),
+        }];
+        let reply = reply_appearance(&snapshot);
+        assert_eq!(reply.footer, "");
+        assert_eq!(reply.blink, None);
+        assert_eq!(snapshot.reply_label(), None);
+        snapshot.targets[0].can_talk = true;
+        let reply = reply_appearance(&snapshot);
+        assert_eq!(reply.footer, "jan");
+        assert_eq!(reply.subtitle, "Regie");
+        assert!(reply.subtitle_low);
+    }
+
+    #[test]
     fn reply_names_the_current_or_last_caller() {
         let mut snapshot = snapshot(1);
         snapshot.incoming = vec![crate::state::IncomingInfo {
@@ -1798,11 +1829,14 @@ mod tests {
         assert!(keys[2..5].iter().all(|key| key.role == Role::Empty));
         assert_eq!(keys[10].role, Role::Menu(MenuPage::Productions));
         assert_eq!(keys[11].role, Role::Menu(MenuPage::Info));
-        assert_eq!(keys[10].appearance.title, "CHANGE PRODUCTION");
-        // Sub-menu keys look like MENU / close: same colour, title only.
-        for key in &keys[10..12] {
+        // Menu keys share one look: MENU colour, short title, small
+        // second word (CHANGE / production, CLEAR / locks).
+        assert_eq!(keys[10].appearance.title, "CHANGE");
+        assert_eq!(keys[10].appearance.subtitle, "production");
+        assert_eq!(keys[1].appearance.title, "CLEAR");
+        assert_eq!(keys[1].appearance.subtitle, "locks");
+        for key in [&keys[1], &keys[10], &keys[11]] {
             assert_eq!(key.appearance.background, keys[0].appearance.background);
-            assert_eq!(key.appearance.subtitle, "");
             assert_eq!(key.appearance.badge, None);
         }
         assert!(!keys.iter().any(|key| matches!(key.role, Role::Target(_))));
