@@ -974,12 +974,8 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
         "ready".to_string()
     };
     if connection_lost(snapshot) {
-        // Offline the address of this box is what people need to reach it.
-        appearance.title = if snapshot.server_not_responding {
-            "NO SERVER".to_string()
-        } else {
-            snapshot.connection.label().to_uppercase()
-        };
+        // Offline the address of this box is what people need to reach it:
+        // it takes the place of the production, under the panel name.
         appearance.subtitle = state.local_ip.clone().unwrap_or_else(|| "no IP".into());
     }
     if snapshot.on_air {
@@ -1740,8 +1736,8 @@ mod tests {
             &DeckState::default(),
             &options(),
         );
-        // Offline the status key names the reason and shows our address.
-        assert_eq!(keys[0].appearance.title, "NO SERVER");
+        // Offline the status key shows our address under the panel name.
+        assert_eq!(keys[0].appearance.title, "Cam 1");
         assert_eq!(keys[0].appearance.subtitle, "no IP");
         let state = DeckState {
             local_ip: Some("192.168.79.72".into()),
