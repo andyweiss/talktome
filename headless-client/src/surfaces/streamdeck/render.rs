@@ -139,9 +139,9 @@ impl Renderer {
                 subtitle_scale,
                 (w - 2 * margin) as f32,
             );
-            // With a status row the subtitle (dB value, production) sits
-            // at the bottom, right above the row, like on the touch strip.
-            let sub_top = (has_row && has_subtitle)
+            // Over a volume bar the subtitle (dB value) sits at the bottom,
+            // right above it, like on the touch strip; else under the title.
+            let sub_top = (appearance.bar.is_some() && has_subtitle)
                 .then(|| text_bottom as f32 - font.as_scaled(PxScale::from(sub_scale)).ascent());
             let title_bottom = sub_top.unwrap_or(text_bottom as f32);
             let total = lines.len() as f32 * title_scale * 1.1
