@@ -27,31 +27,64 @@ impl Geometry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rgb(pub u8, pub u8, pub u8);
 
+/// Key colours, taken from the web client (Tailwind slate scheme). Each
+/// colour is a role: the renderer picks the key style (card, control,
+/// tinted state, solid tally) from it, see `render::style`.
 pub mod palette {
     use super::Rgb;
-    pub const IDLE: Rgb = Rgb(38, 42, 48);
-    pub const IDLE_TEXT: Rgb = Rgb(225, 228, 232);
-    pub const OFFLINE: Rgb = Rgb(28, 30, 34);
-    pub const OFFLINE_TEXT: Rgb = Rgb(110, 115, 122);
+    /// Page background (`#0b1120`): empty keys and the gap around cards.
+    pub const GROUND: Rgb = Rgb(11, 17, 32);
+    /// Target card (`#1f2937`).
+    pub const IDLE: Rgb = Rgb(31, 41, 55);
+    /// Status key at rest (`#1e293b`).
+    pub const STATUS_OK: Rgb = Rgb(30, 41, 59);
+    /// Function keys, like the web layer switcher buttons.
+    pub const CONTROL: Rgb = Rgb(24, 34, 54);
+    /// Outline of control and offline keys (slate-400 at 25%).
+    pub const OUTLINE: Rgb = Rgb(45, 54, 72);
+    /// Offline target (`.is-offline`): darker than a card, outlined.
+    pub const OFFLINE: Rgb = Rgb(15, 21, 37);
+    pub const IDLE_TEXT: Rgb = Rgb(226, 232, 240);
+    /// Secondary text (`#94a3b8`).
+    pub const SUBTEXT: Rgb = Rgb(148, 163, 184);
+    pub const OFFLINE_TEXT: Rgb = Rgb(100, 116, 139);
     /// Web client `.talking-to` (`#8b5cf6`).
     pub const TALKING: Rgb = Rgb(139, 92, 246);
-    /// Darker purple for a talk lock.
+    /// Talk lock: darker violet (`#6d28d9`) plus the lock badge.
     pub const LOCKED: Rgb = Rgb(109, 40, 217);
     /// Web client `.speaking` / incoming audio (`#22c55e`).
     pub const INCOMING: Rgb = Rgb(34, 197, 94);
     pub const RECEIVING: Rgb = INCOMING;
-    pub const MUTED: Rgb = Rgb(150, 40, 40);
-    pub const ON_AIR: Rgb = Rgb(200, 30, 30);
+    /// Web client muted icon (`#ef4444`).
+    pub const MUTED: Rgb = Rgb(239, 68, 68);
+    /// Menu navigation: MENU / back, menu entries, current choice
+    /// (`#06b6d4`). No other key uses cyan, so an open menu is obvious.
+    pub const MENU: Rgb = Rgb(6, 182, 212);
+    /// Entries listed inside the menu: dark key with a cyan outline.
+    pub const MENU_ITEM: Rgb = Rgb(18, 36, 50);
+    pub const MENU_OUTLINE: Rgb = Rgb(14, 116, 144);
+    /// Web client reply button (`#2563eb`), drawn solid.
+    pub const REPLY: Rgb = Rgb(37, 99, 235);
+    /// Selection and active layer (`#3b82f6`).
+    pub const SELECTED: Rgb = Rgb(59, 130, 246);
+    /// Warning (`#f59e0b`).
+    pub const STATUS_BAD: Rgb = Rgb(245, 158, 11);
+    /// Web client program tally (`#e00000`).
+    pub const ON_AIR: Rgb = Rgb(224, 0, 0);
     /// Web client preview tally (`#00875a`).
     pub const PREVIEW: Rgb = Rgb(0, 135, 90);
-    pub const STATUS_OK: Rgb = Rgb(40, 60, 80);
-    pub const STATUS_BAD: Rgb = Rgb(120, 60, 20);
-    pub const VOLUME: Rgb = Rgb(70, 60, 120);
-    pub const MEMBERS: Rgb = Rgb(40, 95, 90);
-    pub const SELECTED: Rgb = Rgb(120, 100, 200);
-    pub const REPLY: Rgb = Rgb(60, 70, 90);
     pub const WHITE: Rgb = Rgb(255, 255, 255);
-    pub const BAR: Rgb = Rgb(120, 200, 255);
+    /// Volume bar fill (`#60a5fa`) and track (`#334155`).
+    pub const BAR: Rgb = Rgb(96, 165, 250);
+    pub const BAR_TRACK: Rgb = Rgb(51, 65, 85);
+    /// Target type dots, like the web client's round target icons:
+    /// user `#446cc2`, conference `#4f9b8b`, feed (slate, a step lighter
+    /// than the web `#475569` so it reads on a card).
+    pub const USER_DOT: Rgb = Rgb(68, 108, 194);
+    pub const CONFERENCE_DOT: Rgb = Rgb(79, 155, 139);
+    pub const FEED_DOT: Rgb = Rgb(100, 116, 139);
+    /// Lock badge (`#fbbf24`).
+    pub const LOCK: Rgb = Rgb(251, 191, 36);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,6 +106,8 @@ pub struct Appearance {
     pub badge: Option<Badge>,
     /// Blinks between background and this colour when set.
     pub blink: Option<Rgb>,
+    /// Target type dot in the top-left corner.
+    pub marker: Option<Rgb>,
 }
 
 impl Appearance {
@@ -85,11 +120,12 @@ impl Appearance {
             bar: None,
             badge: None,
             blink: None,
+            marker: None,
         }
     }
 
     pub fn blank() -> Self {
-        Self::simple("", palette::OFFLINE)
+        Self::simple("", palette::GROUND)
     }
 }
 
@@ -724,7 +760,7 @@ fn command_roles(
 }
 
 fn member_appearance(member: &ConferenceMemberInfo, state: &DeckState) -> Appearance {
-    let mut appearance = Appearance::simple(&member.name, palette::MEMBERS);
+    let mut appearance = Appearance::simple(&member.name, palette::IDLE);
     appearance.subtitle = format_volume_db(member.volume);
     appearance.bar = Some(member.volume);
     if state.member_selected == Some(member.user_id) {
@@ -758,7 +794,7 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
         appearance.background = if state.selected == Some(target.key) {
             palette::SELECTED
         } else {
-            palette::VOLUME
+            palette::IDLE
         };
         appearance.subtitle = volume_label;
         appearance.bar = Some(target.volume);
@@ -780,24 +816,38 @@ fn target_appearance(target: &TargetInfo, state: &DeckState, snapshot: &Snapshot
         palette::IDLE,
         true,
     );
+    // Listen-only keys (feeds and listen-only conferences) look alike:
+    // volume instead of talk, pressing toggles mute.
     if !target.can_talk {
         appearance.subtitle = volume_label;
         appearance.bar = Some(target.volume);
     }
+    // Muted reads the same on every target. Talk keys still show talking
+    // and incoming over it; a listen-only key has nothing else to show.
     if target.muted {
         appearance.badge = Some(Badge::Muted);
-        if !target.can_talk {
+        if appearance.background == palette::IDLE || !target.can_talk {
             appearance.background = palette::MUTED;
+            appearance.blink = None;
         }
     }
+    appearance.marker = Some(type_marker(target.key));
     let _ = snapshot;
     appearance
 }
 
+fn type_marker(key: TargetKey) -> Rgb {
+    match key {
+        TargetKey::User(_) => palette::USER_DOT,
+        TargetKey::Conference(_) => palette::CONFERENCE_DOT,
+        TargetKey::Feed(_) => palette::FEED_DOT,
+    }
+}
+
 fn production_appearance(production: &ProductionInfo, snapshot: &Snapshot) -> Appearance {
-    let mut appearance = Appearance::simple(&production.name, palette::IDLE);
+    let mut appearance = Appearance::simple(&production.name, palette::MENU_ITEM);
     if snapshot.is_current_production(production) {
-        appearance.background = palette::SELECTED;
+        appearance.background = palette::MENU;
         appearance.subtitle = "current".into();
     }
     appearance
@@ -810,7 +860,7 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
             MenuPage::Productions => ("PRODUCTION", "back"),
             MenuPage::Info => ("INFO", "back"),
         };
-        let mut appearance = Appearance::simple(title, palette::SELECTED);
+        let mut appearance = Appearance::simple(title, palette::MENU);
         appearance.subtitle = subtitle.into();
         return appearance;
     }
@@ -863,30 +913,33 @@ fn reply_conference_name(snapshot: &Snapshot) -> Option<String> {
     snapshot.reply_label()
 }
 
+/// Web client reply button: solid blue, purple while talking. Incoming
+/// calls flash it blue / dark instead of green so it keeps its colour.
 fn reply_appearance(snapshot: &Snapshot) -> Appearance {
     let mut appearance = Appearance::simple("REPLY", palette::REPLY);
     match reply_conference_name(snapshot) {
         Some(name) => {
             appearance.subtitle = name;
             if snapshot.main_unavailable {
+                appearance.background = palette::CONTROL;
                 appearance.foreground = palette::OFFLINE_TEXT;
             }
         }
-        None => appearance.foreground = palette::OFFLINE_TEXT,
+        None => {
+            appearance.background = palette::CONTROL;
+            appearance.foreground = palette::OFFLINE_TEXT;
+        }
     }
     let reply_held = snapshot
         .reply_target
         .map(|key| snapshot.target(key).map(|t| t.held).unwrap_or(false))
         .unwrap_or(false);
-    apply_talk_and_listen(
-        &mut appearance,
-        reply_held,
-        false,
-        !snapshot.incoming.is_empty(),
-        false,
-        palette::REPLY,
-        false,
-    );
+    if reply_held {
+        appearance.background = palette::TALKING;
+    } else if !snapshot.incoming.is_empty() && appearance.background == palette::REPLY {
+        appearance.blink = Some(palette::CONTROL);
+        appearance.badge = Some(Badge::Incoming);
+    }
     appearance
 }
 
@@ -939,7 +992,7 @@ fn appearance_for_role(
                 if state.volume_layer {
                     palette::SELECTED
                 } else {
-                    palette::VOLUME
+                    palette::CONTROL
                 },
             );
             a.subtitle = if state.volume_layer {
@@ -955,7 +1008,7 @@ fn appearance_for_role(
                 if state.member_layer {
                     palette::SELECTED
                 } else {
-                    palette::MEMBERS
+                    palette::CONTROL
                 },
             );
             a.subtitle = if state.member_layer {
@@ -973,22 +1026,8 @@ fn appearance_for_role(
             };
             a
         }
-        Role::VolumeUp => Appearance::simple(
-            "+",
-            if state.member_layer {
-                palette::MEMBERS
-            } else {
-                palette::VOLUME
-            },
-        ),
-        Role::VolumeDown => Appearance::simple(
-            "−",
-            if state.member_layer {
-                palette::MEMBERS
-            } else {
-                palette::VOLUME
-            },
-        ),
+        Role::VolumeUp => Appearance::simple("+", palette::CONTROL),
+        Role::VolumeDown => Appearance::simple("−", palette::CONTROL),
         Role::MuteSelected => {
             if state.member_layer {
                 let member = state.member_conference.and_then(|conference| {
@@ -1002,7 +1041,7 @@ fn appearance_for_role(
                     } else {
                         "MUTE"
                     },
-                    palette::MEMBERS,
+                    palette::CONTROL,
                 );
                 if let Some(member) = member {
                     a.subtitle = member.name.clone();
@@ -1014,7 +1053,7 @@ fn appearance_for_role(
                 a
             } else {
                 let selected = state.selected.and_then(|key| snapshot.target(key));
-                let mut a = Appearance::simple("MUTE", palette::VOLUME);
+                let mut a = Appearance::simple("MUTE", palette::CONTROL);
                 if let Some(target) = selected {
                     a.subtitle = target.name.clone();
                     if target.muted {
@@ -1026,7 +1065,7 @@ fn appearance_for_role(
             }
         }
         Role::NextPage => {
-            let mut a = Appearance::simple("NEXT", palette::REPLY);
+            let mut a = Appearance::simple("NEXT", palette::CONTROL);
             a.subtitle = format!(
                 "{}/{}",
                 state.page.min(key_pages.saturating_sub(1)) + 1,
@@ -1035,7 +1074,7 @@ fn appearance_for_role(
             a
         }
         Role::NextEncoderPage => {
-            let mut a = Appearance::simple("DIALS", palette::VOLUME);
+            let mut a = Appearance::simple("DIALS", palette::CONTROL);
             a.subtitle = format!(
                 "{}/{}",
                 state.encoder_page.min(encoder_pages.saturating_sub(1)) + 1,
@@ -1066,7 +1105,7 @@ fn appearance_for_role(
             .map(|production| production_appearance(production, snapshot))
             .unwrap_or_else(Appearance::blank),
         Role::ClearLocks => {
-            let mut a = Appearance::simple("CLEAR", palette::REPLY);
+            let mut a = Appearance::simple("CLEAR", palette::MENU_ITEM);
             a.subtitle = "locks".into();
             if snapshot.lock_active {
                 a.badge = Some(Badge::Lock);
@@ -1091,14 +1130,14 @@ fn menu_entry_appearance(page: MenuPage) -> Appearance {
         MenuPage::Root => "MENU",
     };
     // Same look as the MENU / back key: these keys move between menu screens.
-    Appearance::simple(title, palette::SELECTED)
+    Appearance::simple(title, palette::MENU)
 }
 
 fn info_appearance(line: &InfoLine) -> Appearance {
     let mut a = Appearance::simple(
         line.title,
         if line.ok {
-            palette::STATUS_OK
+            palette::MENU_ITEM
         } else {
             palette::STATUS_BAD
         },
@@ -1156,7 +1195,7 @@ pub fn layout(
         let slots = occupied_target_slots(geometry, shown.len().max(1));
         if shown.is_empty() {
             if let Some(key) = slots.first().and_then(|slot| keys.get_mut(*slot as usize)) {
-                let mut a = Appearance::simple("No productions", palette::OFFLINE);
+                let mut a = Appearance::simple("No productions", palette::MENU_ITEM);
                 a.foreground = palette::OFFLINE_TEXT;
                 key.appearance = a;
             }
@@ -1372,6 +1411,43 @@ mod tests {
         snapshot
     }
 
+    #[test]
+    fn listen_only_conference_looks_like_a_feed() {
+        let mut snapshot = snapshot(3);
+        snapshot.targets[0].key = TargetKey::Conference(7);
+        snapshot.targets[0].can_talk = false;
+        snapshot.targets[1].key = TargetKey::Conference(8);
+        let state = DeckState::default();
+        let look = |snapshot: &Snapshot, index: usize| {
+            target_appearance(&snapshot.targets[index], &state, snapshot)
+        };
+        let listen_conference = look(&snapshot, 0);
+        let talk_conference = look(&snapshot, 1);
+        let feed = look(&snapshot, 2);
+        // Type dot follows the web client icons; listen-only is still a
+        // conference.
+        assert_eq!(listen_conference.marker, Some(palette::CONFERENCE_DOT));
+        assert_eq!(talk_conference.marker, Some(palette::CONFERENCE_DOT));
+        assert_eq!(feed.marker, Some(palette::FEED_DOT));
+        // Listen-only keys share the feed layout: volume, no talk.
+        assert_eq!(listen_conference.subtitle, feed.subtitle);
+        assert_eq!(listen_conference.bar, feed.bar);
+        assert!(talk_conference.bar.is_none());
+
+        // Muted looks the same on every kind of target.
+        for target in &mut snapshot.targets {
+            target.muted = true;
+        }
+        for index in 0..3 {
+            let muted = look(&snapshot, index);
+            assert_eq!(muted.background, palette::MUTED);
+            assert_eq!(muted.badge, Some(Badge::Muted));
+        }
+        // A talk key keeps showing talk over mute.
+        snapshot.targets[1].held = true;
+        assert_eq!(look(&snapshot, 1).background, palette::TALKING);
+    }
+
     fn options() -> LayoutOptions {
         LayoutOptions {
             pedal_left: Some(TargetKey::User(9)),
@@ -1565,8 +1641,8 @@ mod tests {
         assert_eq!(keys[11].role, Role::Production(1));
         assert_eq!(keys[12].role, Role::Production(2));
         assert_eq!(keys[11].appearance.subtitle, "current");
-        assert_eq!(keys[11].appearance.background, palette::SELECTED);
-        assert_eq!(keys[10].appearance.background, palette::IDLE);
+        assert_eq!(keys[11].appearance.background, palette::MENU);
+        assert_eq!(keys[10].appearance.background, palette::MENU_ITEM);
     }
 
     #[test]
@@ -1856,7 +1932,8 @@ mod tests {
         assert_eq!(keys[3].role, Role::Reply);
         assert_eq!(keys[3].appearance.subtitle, "News");
         assert_ne!(keys[3].appearance.subtitle, "jan");
-        assert_eq!(keys[3].appearance.background, palette::INCOMING);
+        assert_eq!(keys[3].appearance.background, palette::REPLY);
+        assert_eq!(keys[3].appearance.blink, Some(palette::CONTROL));
     }
 
     #[test]
