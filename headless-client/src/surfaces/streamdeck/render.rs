@@ -50,29 +50,44 @@ impl Renderer {
         let mut image = RgbImage::from_pixel(w, h, to_pixel(palette::GROUND));
         draw_card(&mut image, 0, 0, w, h, &style);
 
+        // Status row along the bottom, below the text so nothing overlaps:
+        // type dot on the left, badge on the right, and between them the
+        // volume bar or, when muted, the MUTED pill.
+        let muted = appearance.badge == Some(Badge::Muted);
+        let badge = appearance.badge.filter(|badge| *badge != Badge::Muted);
         let mut text_bottom = h - margin;
-        if let Some(bar) = appearance.bar {
-            let bar_h = (h as f32 * 0.08).max(3.0) as u32;
-            let y0 = h - margin - bar_h;
-            draw_bar(
-                &mut image,
-                margin,
-                y0,
-                w - 2 * margin,
-                bar_h,
-                bar,
-                palette::BAR,
-            );
-            text_bottom = y0 - margin / 2;
-        }
-
-        if let Some(badge) = appearance.badge {
-            self.badge(&mut image, badge, margin);
-        }
-        if let Some(marker) = appearance.marker {
-            let r = (w as f32 * 0.06).max(2.5);
-            let edge = margin as f32 + r;
-            fill_circle(&mut image, edge, edge, r, marker);
+        if appearance.bar.is_some() || appearance.marker.is_some() || appearance.badge.is_some() {
+            let row_h = (h as f32 * 0.12).max(5.0) as u32;
+            let row_y = h - margin - row_h;
+            let gap = (margin / 2).max(2);
+            let mut x = margin;
+            let mut right = w - margin;
+            if let Some(marker) = appearance.marker {
+                let r = row_h as f32 / 2.0;
+                fill_circle(&mut image, x as f32 + r, row_y as f32 + r, r, marker);
+                x += row_h + gap;
+            }
+            if let Some(badge) = badge {
+                right -= row_h;
+                self.badge(&mut image, badge, right, row_y, row_h);
+                right = right.saturating_sub(gap);
+            }
+            let width = right.saturating_sub(x);
+            if muted {
+                self.mute_pill(&mut image, x, row_y, width, row_h);
+            } else if let Some(bar) = appearance.bar {
+                let bar_h = (h as f32 * 0.08).max(3.0) as u32;
+                draw_bar(
+                    &mut image,
+                    x,
+                    row_y + (row_h - bar_h) / 2,
+                    width,
+                    bar_h,
+                    bar,
+                    palette::BAR,
+                );
+            }
+            text_bottom = row_y - margin / 2;
         }
 
         if let Some(font) = &self.font {
@@ -119,11 +134,29 @@ impl Renderer {
         image
     }
 
-    fn badge(&self, image: &mut RgbImage, badge: Badge, margin: u32) {
-        let (w, _) = image.dimensions();
-        let size = (w as f32 * 0.16).max(6.0) as u32;
-        let x = w - margin - size;
-        let y = margin;
+    /// Red pill reading MUTED, drawn where the volume bar would be.
+    fn mute_pill(&self, image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32) {
+        fill_round_rect(image, x, y, w, h, h / 2, palette::MUTED);
+        let Some(font) = &self.font else { return };
+        let label = "MUTED";
+        let scale = fit_scale(font, label, h as f32 * 1.05, w as f32 - h as f32);
+        // Centre the capitals vertically: cap height is about 0.73 em.
+        let ascent = font.as_scaled(PxScale::from(scale)).ascent();
+        let top = y as f32 + (h as f32 + scale * 0.73) / 2.0 - ascent;
+        draw_text_at(
+            image,
+            font,
+            label,
+            scale,
+            x as f32,
+            w as f32,
+            top,
+            palette::WHITE,
+        );
+    }
+
+    /// Draws a badge into the `size` square at `x`, `y` of the status row.
+    fn badge(&self, image: &mut RgbImage, badge: Badge, x: u32, y: u32, size: u32) {
         let (cx, cy, r) = (
             x as f32 + size as f32 / 2.0,
             y as f32 + size as f32 / 2.0,
@@ -151,20 +184,9 @@ impl Renderer {
                     palette::LOCK,
                 );
             }
-            Badge::Muted => {
-                // Red dot with a white bar, like a "no entry" sign.
-                fill_circle(image, cx, cy, r, palette::MUTED);
-                let bar_h = (size / 5).max(1);
-                fill_rect(
-                    image,
-                    x + size / 4,
-                    y + (size - bar_h) / 2,
-                    size - size / 2,
-                    bar_h,
-                    palette::WHITE,
-                );
-            }
-            Badge::OnAir | Badge::Incoming => fill_circle(image, cx, cy, r * 0.8, palette::WHITE),
+            // Shown in the status row instead, see `mute_pill`.
+            Badge::Muted => {}
+            Badge::OnAir | Badge::Incoming => fill_circle(image, cx, cy, r, palette::WHITE),
         }
     }
 
@@ -424,15 +446,6 @@ fn blend_pixel(image: &mut RgbImage, x: u32, y: u32, color: Rgb, coverage: f32) 
     ]);
 }
 
-fn fill_rect(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, color: Rgb) {
-    let (iw, ih) = image.dimensions();
-    for yy in y..(y + h).min(ih) {
-        for xx in x..(x + w).min(iw) {
-            image.put_pixel(xx, yy, to_pixel(color));
-        }
-    }
-}
-
 /// Fills a rectangle with anti-aliased rounded corners of `radius`.
 fn fill_round_rect(image: &mut RgbImage, x: u32, y: u32, w: u32, h: u32, radius: u32, color: Rgb) {
     let r = radius.min(w / 2).min(h / 2) as f32;
@@ -589,12 +602,8 @@ mod tests {
         // Bar drawn: left half of the bar row is the bar colour.
         let bar_px = image.get_pixel(10, 63);
         assert_eq!(bar_px.0, [palette::BAR.0, palette::BAR.1, palette::BAR.2]);
-        // Badge drawn in the top-right corner.
-        let badge_px = image.get_pixel(66, 10);
-        assert_ne!(
-            badge_px.0,
-            [palette::IDLE.0, palette::IDLE.1, palette::IDLE.2]
-        );
+        // Badge drawn at the right end of the status row.
+        assert_eq!(image.get_pixel(63, 65).0, [251, 191, 36]);
         if renderer.has_font() {
             // Some text pixels differ from the background.
             let changed = image
@@ -609,6 +618,41 @@ mod tests {
                 .count();
             assert!(changed > 20, "text rendered: {changed}");
         }
+    }
+
+    #[test]
+    fn status_row_has_dot_then_bar_or_mute_pill() {
+        let renderer = renderer();
+        let mut appearance = Appearance::blank();
+        appearance.title = "Virus".into();
+        appearance.background = palette::IDLE;
+        appearance.bar = Some(1.0);
+        appearance.marker = Some(palette::FEED_DOT);
+        let key = renderer.key(&appearance, (96, 96), false);
+        // 96 px: margin 6, row 11 px from y 79; dot spans x 6..17, bar
+        // starts after a 3 px gap.
+        let row_mid = 79 + 5;
+        assert_eq!(key.get_pixel(11, row_mid).0, [100, 116, 139]);
+        assert_eq!(key.get_pixel(18, row_mid).0, [31, 41, 55]);
+        assert_eq!(key.get_pixel(30, row_mid).0, [96, 165, 250]);
+
+        appearance.badge = Some(Badge::Muted);
+        let muted = renderer.key(&appearance, (96, 96), false);
+        assert_eq!(muted.get_pixel(11, row_mid).0, [100, 116, 139]);
+        // Pill edge (left of the label) is red, no bar colour anywhere.
+        assert_eq!(muted.get_pixel(24, row_mid).0, [239, 68, 68]);
+        assert!(!muted.pixels().any(|p| p.0 == [96, 165, 250]));
+        // Nothing drawn in the top-right corner.
+        assert_eq!(muted.get_pixel(84, 12).0, [31, 41, 55]);
+
+        // Other badges sit right of a shorter bar: bar ends at x 76, gap,
+        // padlock from x 79.
+        appearance.badge = Some(Badge::Lock);
+        let locked = renderer.key(&appearance, (96, 96), false);
+        assert_eq!(locked.get_pixel(75, row_mid).0, [96, 165, 250]);
+        assert_eq!(locked.get_pixel(77, row_mid).0, [31, 41, 55]);
+        assert_eq!(locked.get_pixel(84, 86).0, [251, 191, 36]);
+        assert_eq!(locked.get_pixel(84, 12).0, [31, 41, 55]);
     }
 
     #[test]
