@@ -265,6 +265,11 @@ impl Renderer {
                     crate::audio::mixer::format_volume_db(segment.volume)
                 };
                 let sub_scale = (seg_h as f32 * 0.22).max(9.0);
+                // Bottom-aligned: the dB value sits just above the bar,
+                // the name stays at the top.
+                let sub_top = bar_y as f32
+                    - (margin as f32 / 2.0).max(2.0)
+                    - font.as_scaled(PxScale::from(sub_scale)).ascent();
                 draw_text_at(
                     &mut image,
                     font,
@@ -272,7 +277,7 @@ impl Renderer {
                     sub_scale,
                     x0 as f32,
                     seg_w as f32,
-                    y0 as f32 + margin as f32 + scale * 1.1,
+                    sub_top,
                     subtitle_color,
                 );
             }
@@ -753,6 +758,9 @@ mod tests {
         ];
         let image = renderer.strip((800, 100), &segments);
         assert_eq!(image.dimensions(), (800, 100));
+        image
+            .save(std::env::temp_dir().join("talktome-strip-plus.png"))
+            .unwrap();
         let vertical = renderer.strip((100, 1200), &segments);
         assert_eq!(vertical.dimensions(), (100, 1200));
     }
