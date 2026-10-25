@@ -42,6 +42,10 @@ pub const DEMO_TARGETS_ENV: &str = "TALKTOME_DEMO_TARGETS";
 pub const DEMO_REPLY_ENV: &str = "TALKTOME_DEMO_REPLY";
 const STATUS_HOLD: Duration = Duration::from_millis(2000);
 const MUTE_HOLD: Duration = Duration::from_millis(600);
+/// How often the local IP is looked up again while the connection is lost.
+const OFFLINE_IP_REFRESH: Duration = Duration::from_secs(5);
+/// Holding a conference dial this long opens its members while still held.
+const MEMBER_HOLD: Duration = Duration::from_millis(1000);
 const BLINK_PERIOD: Duration = Duration::from_millis(500);
 const READ_POLL_HZ: f32 = 50.0;
 
@@ -658,6 +662,7 @@ async fn run_device(
     let mut lcd_rendered: Option<Vec<StripSegment>> = None;
     let mut pressed: HashMap<u8, PressedKey> = HashMap::new();
     let mut pressed_encoders: HashMap<u8, Instant> = HashMap::new();
+    let mut ip_checked: Option<Instant> = None;
     let mut keys: Vec<KeySpec> = layout::layout(&geometry, &snapshot, &state, &options);
     let mut blink = tokio::time::interval(BLINK_PERIOD);
     let volume_timeout = Duration::from_secs(config.volume_layer_timeout_s.max(1));
@@ -697,7 +702,39 @@ async fn run_device(
     loop {
         let mut relayout = false;
         let mut pending_updates: Vec<DeviceStateUpdate> = Vec::new();
+        let member_hold_at = pressed_encoders
+            .iter()
+            .filter(|(encoder, _)| {
+                matches!(
+                    bound_encoder(&geometry, &state, &snapshot, **encoder),
+                    Some(BoundEncoder::Target(TargetKey::Conference(_)))
+                )
+            })
+            .map(|(_, since)| *since + MEMBER_HOLD)
+            .min();
         tokio::select! {
+            _ = async {
+                match member_hold_at {
+                    Some(at) => tokio::time::sleep_until(at.into()).await,
+                    None => std::future::pending().await,
+                }
+            } => {
+                let now = Instant::now();
+                let due: Vec<u8> = pressed_encoders
+                    .iter()
+                    .filter(|(_, since)| now.duration_since(**since) >= MEMBER_HOLD)
+                    .map(|(encoder, _)| *encoder)
+                    .collect();
+                for encoder in due {
+                    if let Some(BoundEncoder::Target(target @ TargetKey::Conference(_))) =
+                        bound_encoder(&geometry, &state, &snapshot, encoder)
+                    {
+                        // Handled: the release that follows does nothing.
+                        pressed_encoders.remove(&encoder);
+                        relayout |= state.open_member_layer(&snapshot, Some(target));
+                    }
+                }
+            }
             changed = snapshots.changed() => {
                 if changed.is_err() { return Ok(()); }
                 snapshot = with_demo_targets(snapshots.borrow().clone(), is_mock);
@@ -711,6 +748,16 @@ async fn run_device(
                     || state.expire_listen_only(LISTEN_ONLY_NOTICE)
                 {
                     relayout = true;
+                }
+                if layout::connection_lost(&snapshot)
+                    && ip_checked.is_none_or(|at| at.elapsed() >= OFFLINE_IP_REFRESH)
+                {
+                    ip_checked = Some(Instant::now());
+                    let ip = local_ip_towards(&snapshot.server_url).await;
+                    if ip != state.local_ip {
+                        state.local_ip = ip;
+                        relayout = true;
+                    }
                 }
             }
             injected = deck_input.recv() => {
@@ -1050,9 +1097,11 @@ async fn run_device(
                             state.touch_member_layer();
                         }
                         Some(BoundEncoder::Target(target)) => {
-                            if held >= MUTE_HOLD && matches!(target, TargetKey::Conference(_)) {
-                                relayout = state.open_member_layer(&snapshot, Some(target));
-                            } else {
+                            // Held past MEMBER_HOLD, a conference already
+                            // opened its members; let go just short of it,
+                            // nothing happens rather than a surprise mute.
+                            let conference = matches!(target, TargetKey::Conference(_));
+                            if !conference || held < MUTE_HOLD {
                                 let _ = bus.commands.send(Command::MuteToggle(target)).await;
                             }
                         }
@@ -1467,6 +1516,7 @@ async fn render_lcd(
     snapshot: &Snapshot,
     rendered: &mut Option<Vec<StripSegment>>,
 ) -> Result<()> {
+    let offline = layout::connection_lost(snapshot);
     let segments: Vec<StripSegment> = if geometry.encoders > 0 {
         encoder_bindings(geometry, state, snapshot)
             .into_iter()
@@ -1475,7 +1525,9 @@ async fn render_lcd(
                     title: target.name.clone(),
                     volume: target.volume,
                     muted: target.muted,
-                    background: if target.held {
+                    background: if offline {
+                        palette::OFFLINE
+                    } else if target.held {
                         palette::TALKING
                     } else if target.locked {
                         palette::LOCKED
@@ -1489,7 +1541,9 @@ async fn render_lcd(
                     title: member.name.clone(),
                     volume: member.volume,
                     muted: member.muted,
-                    background: if member.receiving {
+                    background: if offline {
+                        palette::OFFLINE
+                    } else if member.receiving {
                         palette::RECEIVING
                     } else if member.muted {
                         palette::MUTED

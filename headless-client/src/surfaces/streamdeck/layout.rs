@@ -63,9 +63,9 @@ pub mod palette {
     /// Entries listed inside the menu: dark key with a cyan outline.
     pub const MENU_ITEM: Rgb = Rgb(18, 36, 50);
     pub const MENU_OUTLINE: Rgb = Rgb(14, 116, 144);
-    /// Reply: the web client's reply button blue a step darker (its hover
-    /// `#1d4ed8`), drawn solid, so it does not outshine state keys.
-    pub const REPLY: Rgb = Rgb(29, 78, 216);
+    /// Reply: the web client's reply button blue two steps darker
+    /// (`#1e40af`), drawn solid, so it does not outshine state keys.
+    pub const REPLY: Rgb = Rgb(30, 64, 175);
     /// Selection and active layer (`#3b82f6`).
     pub const SELECTED: Rgb = Rgb(59, 130, 246);
     /// Warning (`#f59e0b`).
@@ -107,8 +107,10 @@ pub struct Appearance {
     pub badge: Option<Badge>,
     /// Blinks between background and this colour when set.
     pub blink: Option<Rgb>,
-    /// Target type dot in the top-left corner.
+    /// Target type dot at the start of the status row.
     pub marker: Option<Rgb>,
+    /// Small label in the status row (MENU, back, close).
+    pub footer: String,
 }
 
 impl Appearance {
@@ -122,12 +124,27 @@ impl Appearance {
             badge: None,
             blink: None,
             marker: None,
+            footer: String::new(),
         }
     }
 
     pub fn blank() -> Self {
         Self::simple("", palette::GROUND)
     }
+
+    /// Dark grey like an offline user: no state colour, bar or badge.
+    fn go_offline(&mut self) {
+        self.background = palette::OFFLINE;
+        self.foreground = palette::OFFLINE_TEXT;
+        self.blink = None;
+        self.badge = None;
+        self.bar = None;
+    }
+}
+
+/// No usable server connection: every key but the status key goes grey.
+pub fn connection_lost(snapshot: &Snapshot) -> bool {
+    snapshot.connection != ConnectionState::Ready || snapshot.server_not_responding
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -889,7 +906,7 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
             MenuPage::Info => ("INFO", "back"),
         };
         let mut appearance = Appearance::simple(title, palette::MENU);
-        appearance.subtitle = subtitle.into();
+        appearance.footer = subtitle.into();
         return appearance;
     }
     let mut appearance = Appearance::simple(
@@ -923,6 +940,15 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
     } else {
         "ready".to_string()
     };
+    if connection_lost(snapshot) {
+        // Offline the address of this box is what people need to reach it.
+        appearance.title = if snapshot.server_not_responding {
+            "NO SERVER".to_string()
+        } else {
+            snapshot.connection.label().to_uppercase()
+        };
+        appearance.subtitle = state.local_ip.clone().unwrap_or_else(|| "no IP".into());
+    }
     if snapshot.on_air {
         appearance.background = palette::ON_AIR;
         appearance.subtitle = "ON AIR".to_string();
@@ -934,6 +960,7 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
     if snapshot.lock_active {
         appearance.badge = Some(Badge::Lock);
     }
+    appearance.footer = "MENU".into();
     appearance
 }
 
@@ -1023,11 +1050,9 @@ fn appearance_for_role(
                     palette::CONTROL
                 },
             );
-            a.subtitle = if state.volume_layer {
-                "back".into()
-            } else {
-                String::new()
-            };
+            if state.volume_layer {
+                a.footer = "back".into();
+            }
             a
         }
         Role::MembersToggle => {
@@ -1039,10 +1064,10 @@ fn appearance_for_role(
                     palette::CONTROL
                 },
             );
-            a.subtitle = if state.member_layer {
-                "back".into()
+            if state.member_layer {
+                a.footer = "back".into();
             } else {
-                state
+                a.subtitle = state
                     .member_conference
                     .and_then(|key| snapshot.target(key))
                     .or_else(|| {
@@ -1050,8 +1075,8 @@ fn appearance_for_role(
                             .and_then(|key| snapshot.target(key))
                     })
                     .map(|target| target.name.clone())
-                    .unwrap_or_default()
-            };
+                    .unwrap_or_default();
+            }
             a
         }
         Role::VolumeUp => Appearance::simple("+", palette::CONTROL),
@@ -1094,7 +1119,7 @@ fn appearance_for_role(
         }
         Role::NextPage => {
             let mut a = Appearance::simple("NEXT", palette::CONTROL);
-            a.subtitle = format!(
+            a.footer = format!(
                 "{}/{}",
                 state.page.min(key_pages.saturating_sub(1)) + 1,
                 key_pages
@@ -1103,7 +1128,7 @@ fn appearance_for_role(
         }
         Role::NextEncoderPage => {
             let mut a = Appearance::simple("DIALS", palette::CONTROL);
-            a.subtitle = format!(
+            a.footer = format!(
                 "{}/{}",
                 state.encoder_page.min(encoder_pages.saturating_sub(1)) + 1,
                 encoder_pages
@@ -1255,6 +1280,14 @@ pub fn layout(
             if let Some(key) = keys.get_mut(*slot as usize) {
                 key.role = Role::Target(target.key);
                 key.appearance = target_appearance(target, state, snapshot);
+            }
+        }
+    }
+    // The menu still works offline (INFO helps to find out why).
+    if state.menu.is_none() && connection_lost(snapshot) {
+        for key in &mut keys {
+            if !matches!(key.role, Role::Status | Role::Empty) {
+                key.appearance.go_offline();
             }
         }
     }
@@ -1545,6 +1578,41 @@ mod tests {
         assert_eq!(keys[6].role, Role::Target(TargetKey::Feed(2)));
         assert_eq!(keys[7].role, Role::Empty);
         assert_eq!(keys[0].appearance.subtitle, "ready");
+        assert_eq!(keys[0].appearance.footer, "MENU");
+    }
+
+    #[test]
+    fn lost_connection_greys_every_key_but_status() {
+        let mut snapshot = snapshot(3);
+        snapshot.targets[0].held = true;
+        snapshot.targets[1].muted = true;
+        snapshot.connection = ConnectionState::Disconnected;
+        let keys = layout(
+            &geometry("mk2"),
+            &snapshot,
+            &DeckState::default(),
+            &options(),
+        );
+        assert_eq!(keys[0].appearance.background, palette::STATUS_BAD);
+        for key in keys
+            .iter()
+            .filter(|key| !matches!(key.role, Role::Status | Role::Empty))
+        {
+            assert_eq!(
+                key.appearance.background,
+                palette::OFFLINE,
+                "{:?}",
+                key.role
+            );
+            assert_eq!(key.appearance.foreground, palette::OFFLINE_TEXT);
+            assert_eq!(key.appearance.badge, None);
+            assert_eq!(key.appearance.bar, None);
+        }
+        // The menu stays usable.
+        let mut state = DeckState::default();
+        state.open_menu(MenuPage::Root);
+        let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
+        assert_eq!(keys[10].appearance.background, palette::MENU);
     }
 
     #[test]
@@ -1559,7 +1627,15 @@ mod tests {
             &DeckState::default(),
             &options(),
         );
-        assert_eq!(keys[0].appearance.subtitle, "no server");
+        // Offline the status key names the reason and shows our address.
+        assert_eq!(keys[0].appearance.title, "NO SERVER");
+        assert_eq!(keys[0].appearance.subtitle, "no IP");
+        let state = DeckState {
+            local_ip: Some("192.168.79.72".into()),
+            ..DeckState::default()
+        };
+        let keys = layout(&geometry("neo"), &snapshot, &state, &options());
+        assert_eq!(keys[0].appearance.subtitle, "192.168.79.72");
         assert_eq!(keys[0].appearance.background, palette::STATUS_BAD);
         snapshot.on_air = true;
         let keys = layout(
@@ -1607,7 +1683,7 @@ mod tests {
         let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
         assert_eq!(keys[0].role, Role::Status);
         assert_eq!(keys[0].appearance.title, "MENU");
-        assert_eq!(keys[0].appearance.subtitle, "close");
+        assert_eq!(keys[0].appearance.footer, "close");
         // CLEAR next to status; no VOL, NEXT, MEMBERS or Reply.
         assert_eq!(keys[1].role, Role::ClearLocks);
         assert!(keys[2..5].iter().all(|key| key.role == Role::Empty));
@@ -1689,7 +1765,7 @@ mod tests {
         let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
         assert_eq!(keys[0].role, Role::Status);
         assert_eq!(keys[0].appearance.title, "PRODUCTION");
-        assert_eq!(keys[0].appearance.subtitle, "back");
+        assert_eq!(keys[0].appearance.footer, "back");
         // No CLEAR, VOL, NEXT, MEMBERS, Reply or targets on this page.
         assert!(keys[1..5].iter().all(|key| key.role == Role::Empty));
         assert!(!keys
@@ -1717,7 +1793,7 @@ mod tests {
         let keys = layout(&geometry, &snapshot, &state, &options());
         // Neo: 4 production keys per page, NEXT at the far right of the command row.
         assert_eq!(keys[3].role, Role::NextPage);
-        assert_eq!(keys[3].appearance.subtitle, "1/2");
+        assert_eq!(keys[3].appearance.footer, "1/2");
         *state.key_page_mut() = 1;
         state.clamp_pages(&geometry, &snapshot);
         let keys = layout(&geometry, &snapshot, &state, &options());
@@ -1770,7 +1846,7 @@ mod tests {
         let keys = layout(&geometry, &snapshot, &state, &options());
         assert_eq!(keys[3].role, Role::Target(TargetKey::User(6)));
         assert_eq!(keys[4].role, Role::Empty);
-        assert_eq!(keys[1].appearance.subtitle, "3/3");
+        assert_eq!(keys[1].appearance.footer, "3/3");
     }
 
     #[test]
@@ -2204,7 +2280,7 @@ mod tests {
         assert_eq!(keys[5].appearance.badge, Some(Badge::Muted));
         assert_eq!(keys[1].appearance.title, "MUTE");
         assert_eq!(keys[1].appearance.subtitle, "M0");
-        assert_eq!(keys[0].appearance.subtitle, "back");
+        assert_eq!(keys[0].appearance.footer, "back");
     }
 
     #[test]

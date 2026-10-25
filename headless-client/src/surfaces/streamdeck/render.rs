@@ -56,7 +56,12 @@ impl Renderer {
         let muted = appearance.badge == Some(Badge::Muted);
         let badge = appearance.badge.filter(|badge| *badge != Badge::Muted);
         let mut text_bottom = h - margin;
-        if appearance.bar.is_some() || appearance.marker.is_some() || appearance.badge.is_some() {
+        let footer = appearance.footer.trim();
+        let has_row = appearance.bar.is_some()
+            || appearance.marker.is_some()
+            || appearance.badge.is_some()
+            || !footer.is_empty();
+        if has_row {
             let row_h = (h as f32 * 0.12).max(5.0) as u32;
             // Clear of a state frame, and one more pixel sideways for the
             // rounded corners.
@@ -91,6 +96,25 @@ impl Renderer {
                 );
             }
             text_bottom = row_y - margin / 2;
+            if let (Some(font), false) = (&self.font, footer.is_empty()) {
+                // Small capitals sitting on the bottom of the row, centred
+                // between dot and badge.
+                let (_, colour) = text_colours(appearance.foreground, &style);
+                let scale = fit_scale(font, footer, (h as f32 * 0.15).max(8.0), width as f32);
+                let ascent = font.as_scaled(PxScale::from(scale)).ascent();
+                let baseline = (row_y + row_h) as f32;
+                draw_text_at(
+                    &mut image,
+                    font,
+                    footer,
+                    scale,
+                    x as f32,
+                    width as f32,
+                    baseline - ascent,
+                    colour,
+                );
+                text_bottom = (baseline - scale * 0.73) as u32 - margin / 2;
+            }
         }
 
         if let Some(font) = &self.font {
@@ -104,13 +128,24 @@ impl Renderer {
                 title_scale,
                 (w - 2 * margin) as f32,
             );
+            let sub_scale = fit_scale(
+                font,
+                &appearance.subtitle,
+                subtitle_scale,
+                (w - 2 * margin) as f32,
+            );
+            // With a status row the subtitle (dB value, production) sits
+            // at the bottom, right above the row, like on the touch strip.
+            let sub_top = (has_row && has_subtitle)
+                .then(|| text_bottom as f32 - font.as_scaled(PxScale::from(sub_scale)).ascent());
+            let title_bottom = sub_top.unwrap_or(text_bottom as f32);
             let total = lines.len() as f32 * title_scale * 1.1
-                + if has_subtitle {
+                + if has_subtitle && sub_top.is_none() {
                     subtitle_scale * 1.2
                 } else {
                     0.0
                 };
-            let mut y = ((text_bottom as f32 - margin as f32 - total) / 2.0).max(margin as f32)
+            let mut y = ((title_bottom - margin as f32 - total) / 2.0).max(margin as f32)
                 + margin as f32 * 0.5;
             for line in lines {
                 let scale = fit_scale(font, &line, title_scale, (w - 2 * margin) as f32);
@@ -118,18 +153,12 @@ impl Renderer {
                 y += scale * 1.1;
             }
             if has_subtitle {
-                let scale = fit_scale(
-                    font,
-                    &appearance.subtitle,
-                    subtitle_scale,
-                    (w - 2 * margin) as f32,
-                );
                 draw_text(
                     &mut image,
                     font,
                     &appearance.subtitle,
-                    scale,
-                    y + 2.0,
+                    sub_scale,
+                    sub_top.unwrap_or(y + 2.0),
                     subtitle_color,
                 );
             }
@@ -246,7 +275,12 @@ impl Renderer {
                 },
             );
             if let Some(font) = &self.font {
-                let (title_color, subtitle_color) = text_colours(palette::IDLE_TEXT, &style);
+                let foreground = if segment.background == palette::OFFLINE {
+                    palette::OFFLINE_TEXT
+                } else {
+                    palette::IDLE_TEXT
+                };
+                let (title_color, subtitle_color) = text_colours(foreground, &style);
                 let scale = (seg_h as f32 * 0.3).max(10.0);
                 let scale = fit_scale(font, &segment.title, scale, (seg_w - 2 * margin) as f32);
                 draw_text_at(
@@ -956,6 +990,16 @@ mod tests {
         assert_eq!(keys[10].appearance.title, "kenny");
         compose_grid(&renderer, &keys, mk2.cols, 72)
             .save(dir.join("talktome-layout-mk2-eight.png"))
+            .unwrap();
+        let mut offline = snapshot.clone();
+        offline.connection = crate::state::ConnectionState::Disconnected;
+        let offline_state = DeckState {
+            local_ip: Some("192.168.79.72".into()),
+            ..DeckState::default()
+        };
+        let keys = layout(&mk2, &offline, &offline_state, &options);
+        compose_grid(&renderer, &keys, mk2.cols, 72)
+            .save(dir.join("talktome-layout-mk2-offline.png"))
             .unwrap();
         let mut menu_snapshot = snapshot.clone();
         menu_snapshot.productions = ["SRF News", "Sport", "Meteo"]
