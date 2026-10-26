@@ -39,11 +39,14 @@ pub const OUTPUT_NAMES: &[&str] = &[
 const STATUS_TICK: Duration = Duration::from_millis(50);
 /// Length of the heartbeat flash while the client runs but is not registered.
 const STATUS_FLASH_MS: u64 = 100;
+/// Dark time after each flash; long enough not to read as the 1 s / 1 s
+/// "degraded" blink.
+const STATUS_FLASH_GAP_MS: u64 = 2000;
 
 /// `gpio.outputs.status`: a status light readable without a screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatusLight {
-    /// Running, not registered on the server: a short flash once a second.
+    /// Running, not registered on the server: a short flash, then 2 s dark.
     Running,
     /// Registered, but media not connected or another error: 1 s on, 1 s off.
     Degraded,
@@ -74,7 +77,9 @@ impl StatusLight {
     /// Line level `phase_ms` milliseconds into the pattern.
     pub fn level(self, phase_ms: u64) -> bool {
         match self {
-            StatusLight::Running => phase_ms % 1000 < STATUS_FLASH_MS,
+            StatusLight::Running => {
+                phase_ms % (STATUS_FLASH_MS + STATUS_FLASH_GAP_MS) < STATUS_FLASH_MS
+            }
             StatusLight::Degraded => phase_ms % 2000 < 1000,
             StatusLight::Ok => true,
         }
@@ -1027,11 +1032,18 @@ mod tests {
 
     #[test]
     fn status_light_patterns() {
-        // Running: a 100 ms flash at the start of every second.
+        // Running: a 100 ms flash, then 2 s dark (2.1 s cycle).
         assert!(StatusLight::Running.level(0));
-        assert!(StatusLight::Running.level(1050));
-        assert!(!StatusLight::Running.level(150));
-        assert!(!StatusLight::Running.level(999));
+        assert!(StatusLight::Running.level(99));
+        assert!(!StatusLight::Running.level(100));
+        assert!(!StatusLight::Running.level(1050));
+        assert!(!StatusLight::Running.level(2099));
+        assert!(StatusLight::Running.level(2100));
+        assert!(StatusLight::Running.level(4250));
+        let lit = (0..2100)
+            .filter(|ms| StatusLight::Running.level(*ms))
+            .count();
+        assert_eq!(lit, 100);
         // Degraded: one second on, one second off.
         assert!(StatusLight::Degraded.level(500));
         assert!(!StatusLight::Degraded.level(1500));

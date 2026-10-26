@@ -747,7 +747,8 @@ Every command is answered with the matching `-result` event carrying the
   re-evaluated every 50 ms (the timer only runs when the output is
   configured):
   - not registered (Disconnected, Connecting, LoggingIn, Registering,
-    Conflict, Kicked): 100 ms flash at the start of every second;
+    Conflict, Kicked): a 100 ms flash followed by 2 s dark (2.1 s cycle),
+    so it does not read as the 1 s / 1 s blink below;
   - registered but not healthy (state Registered, or Ready with audio
     devices not open, server heartbeat missing, or media status
     "Media interrupted" / "Media failed"): 1 s on, 1 s off;

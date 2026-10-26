@@ -369,7 +369,7 @@ client is doing without a screen:
 
 | LED | Meaning |
 |---|---|
-| short flash (100 ms) once a second | the client is running but not registered on the server (offline, connecting, logging in, account in use, kicked) |
+| short flash (100 ms), then 2 s dark | the client is running but not registered on the server (offline, connecting, logging in, account in use, kicked) |
 | 1 s on, 1 s off | registered, but media is not connected yet, audio devices are not open, the server heartbeat is missing, or media is interrupted |
 | steady on | registered, media connected, audio OK |
 | off | the client is not running |
