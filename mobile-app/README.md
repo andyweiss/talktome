@@ -100,7 +100,14 @@ independent because they use different package identifiers.
 
 ## Publisher setup for EAS and the stores
 
-Create/link the publisher's Expo project and register the main iOS bundle ID,
+The app is linked to `@talktomecomm/talktome` (EAS project ID
+`28c1fc0f-12d6-4b3a-a40d-dbf24dd2dcd2`) in `app.config.ts`. These public defaults
+also let EAS CLI resolve the project without relying on local `.env` loading.
+`TALKTOME_EXPO_OWNER` and `TALKTOME_EAS_PROJECT_ID` can override them for a fork.
+After `npx eas-cli@latest login`, verify access from `mobile-app/` with
+`npx eas-cli@latest project:info`.
+
+Register the main iOS bundle ID,
 `.widget` and `.watchkitapp` extensions and the `group.<bundle ID>` App Group
 in the publisher's Apple team. Provision the app and extensions in EAS once
 interactively, including App Store Connect submission credentials. Run EAS
@@ -139,8 +146,9 @@ for that run. This ensures EAS workers use the same settings as GitHub even
 though runner environment variables are not automatically forwarded to cloud
 builds. For iOS, the App Store Connect app ID is also written into the submission
 profile. No signing key is written to the repository or the uploaded source.
-The committed config has no contributor-specific Expo, Apple-team or Store ID;
-local development defaults to `com.example.talktome` without a signing team.
+The committed config contains the public Talktome Expo project identity, but no
+Apple-team or Store ID; local development defaults to `com.example.talktome`
+without a signing team.
 See [Expo's build-profile environment documentation](https://docs.expo.dev/build/eas-json/).
 
 For interactive EAS development/preview builds, export the same identity

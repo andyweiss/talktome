@@ -5,7 +5,7 @@ const iosSigning = resolveIosSigning(__dirname);
 
 const config: ExpoConfig = {
   name: 'TalkToMe',
-  slug: 'talktome-mobile',
+  slug: 'talktome',
   version: process.env.TALKTOME_MOBILE_VERSION || '1.0.0',
   orientation: 'default',
   icon: './assets/icon.png',
@@ -116,11 +116,11 @@ const config: ExpoConfig = {
     './plugins/withTalkToMeSplash',
     './plugins/withTalkToMeAndroidIcons',
   ],
-  ...(process.env.TALKTOME_EXPO_OWNER ? { owner: process.env.TALKTOME_EXPO_OWNER } : {}),
+  owner: process.env.TALKTOME_EXPO_OWNER || 'talktomecomm',
   extra: {
-    ...(process.env.TALKTOME_EAS_PROJECT_ID
-      ? { eas: { projectId: process.env.TALKTOME_EAS_PROJECT_ID } }
-      : {}),
+    eas: {
+      projectId: process.env.TALKTOME_EAS_PROJECT_ID || '28c1fc0f-12d6-4b3a-a40d-dbf24dd2dcd2',
+    },
   },
 };
 
