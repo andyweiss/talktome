@@ -606,24 +606,30 @@ impl RecvTransport {
                     })
                     .await;
                 tracing::info!(event = "consumer-track", consumer = %consumer_id, ssrc);
-                loop {
-                    match track.read_rtp().await {
-                        Ok((packet, _)) => {
-                            let out = RxPacket {
-                                consumer_id: consumer_id.clone(),
-                                sequence: packet.header.sequence_number,
-                                payload: packet.payload,
-                            };
-                            if rx_packets.send(out).await.is_err() {
+                // webrtc-rs holds the on_track handler lock until this future
+                // returns, so reading here would hold back every later track
+                // (a call while a feed plays) until this one ends. Read in a
+                // task of its own.
+                tokio::spawn(async move {
+                    loop {
+                        match track.read_rtp().await {
+                            Ok((packet, _)) => {
+                                let out = RxPacket {
+                                    consumer_id: consumer_id.clone(),
+                                    sequence: packet.header.sequence_number,
+                                    payload: packet.payload,
+                                };
+                                if rx_packets.send(out).await.is_err() {
+                                    break;
+                                }
+                            }
+                            Err(error) => {
+                                tracing::debug!(event = "consumer-track-ended", consumer = %consumer_id, error = %error);
                                 break;
                             }
                         }
-                        Err(error) => {
-                            tracing::debug!(event = "consumer-track-ended", consumer = %consumer_id, error = %error);
-                            break;
-                        }
                     }
-                }
+                });
             })
         }));
 
