@@ -13,8 +13,8 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use elgato_streamdeck::asynchronous::AsyncStreamDeck;
-use elgato_streamdeck::images::convert_image_with_format;
-use elgato_streamdeck::info::Kind;
+use elgato_streamdeck::images::{convert_image_with_format, ImageRect};
+use elgato_streamdeck::info::{ImageFormat, ImageMirroring, ImageMode, ImageRotation, Kind};
 use elgato_streamdeck::DeviceStateUpdate;
 use image::{DynamicImage, RgbImage};
 use tokio::sync::watch;
@@ -120,16 +120,35 @@ impl Device {
 
     async fn set_key(&self, key: u8, image: RgbImage) -> Result<()> {
         match self {
-            Device::Real(deck) => deck
-                .set_button_image(key, DynamicImage::ImageRgb8(image))
-                .await
-                .map_err(|e| anyhow!("{e}")),
+            Device::Real(deck) => {
+                let data = convert_image_with_format(
+                    key_image_format(deck.kind()),
+                    DynamicImage::ImageRgb8(image),
+                )
+                .map_err(|e| anyhow!("{e}"))?;
+                deck.write_image(key, &data)
+                    .await
+                    .map_err(|e| anyhow!("{e}"))
+            }
             Device::Mock(mock) => mock.write_key(key, &image),
         }
     }
 
     async fn set_lcd(&self, image: RgbImage) -> Result<()> {
         match self {
+            Device::Real(deck) if matches!(deck.kind(), Kind::PlusXl) => {
+                // elgato-streamdeck 0.13 sends the rotated 100×1200 size in the
+                // header; the + XL wants the logical 1200×100 region with the
+                // JPEG rotated 90° counter-clockwise (Elgato HID docs).
+                let (w, h) = image.dimensions();
+                let mut rect = ImageRect::from_image(DynamicImage::ImageRgb8(image).rotate270())
+                    .map_err(|e| anyhow!("{e}"))?;
+                rect.w = w as u16;
+                rect.h = h as u16;
+                deck.write_lcd(0, 0, &rect)
+                    .await
+                    .map_err(|e| anyhow!("{e}"))
+            }
             Device::Real(deck) => {
                 let Some(format) = deck.kind().lcd_image_format() else {
                     return Ok(());
@@ -643,9 +662,7 @@ async fn run_device(
     let serial = device.serial().await;
     let is_mock = device.is_mock();
     let key_size = effective_key_size(kind);
-    let lcd_size = kind
-        .lcd_image_format()
-        .map(|f| (f.size.0 as u32, f.size.1 as u32));
+    let lcd_size = lcd_logical_size(kind);
     let options = layout_options(device_config);
     let reader = match &device {
         Device::Real(deck) => Some(deck.get_reader()),
@@ -1221,8 +1238,34 @@ async fn run_device(
     }
 }
 
+/// Key image format. elgato-streamdeck 0.13 gives the Stream Deck + XL
+/// 120×120 keys; Elgato's HID docs specify 112×112 JPEG, rotated 90°
+/// counter-clockwise, and a larger image comes out cropped and shifted.
+fn key_image_format(kind: Kind) -> ImageFormat {
+    match kind {
+        Kind::PlusXl => ImageFormat {
+            mode: ImageMode::JPEG,
+            size: (112, 112),
+            rotation: ImageRotation::Rot270,
+            mirror: ImageMirroring::None,
+        },
+        _ => kind.key_image_format(),
+    }
+}
+
+/// Size the touch strip / LCD is drawn at, before any upload rotation. The
+/// library reports the + XL strip already rotated (100×1200); it is 1200×100.
+fn lcd_logical_size(kind: Kind) -> Option<(u32, u32)> {
+    match kind {
+        Kind::PlusXl => Some((1200, 100)),
+        _ => kind
+            .lcd_image_format()
+            .map(|format| (format.size.0 as u32, format.size.1 as u32)),
+    }
+}
+
 fn effective_key_size(kind: Kind) -> (u32, u32) {
-    let (w, h) = kind.key_image_format().size;
+    let (w, h) = key_image_format(kind).size;
     if w == 0 || h == 0 {
         (96, 96)
     } else {
@@ -1600,7 +1643,17 @@ mod tests {
         );
     }
 
-    use super::{kind_from_name, local_ip_towards};
+    use super::{effective_key_size, kind_from_name, lcd_logical_size, local_ip_towards, Kind};
+
+    #[test]
+    fn plus_xl_uses_elgato_sizes_not_the_library_ones() {
+        assert_eq!(effective_key_size(Kind::PlusXl), (112, 112));
+        assert_eq!(lcd_logical_size(Kind::PlusXl), Some((1200, 100)));
+        // Other models keep the library values.
+        assert_eq!(effective_key_size(Kind::Plus), (120, 120));
+        assert_eq!(lcd_logical_size(Kind::Plus), Some((800, 100)));
+        assert_eq!(lcd_logical_size(Kind::Mk2), None);
+    }
 
     #[test]
     fn kind_from_name_accepts_config_models() {
