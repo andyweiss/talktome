@@ -49,7 +49,7 @@ const config: ExpoConfig = {
   },
   android: {
     // Android Java packages cannot contain a hyphen.
-    package: process.env.TALKTOME_ANDROID_PACKAGE || 'com.example.talktome',
+    package: process.env.TALKTOME_ANDROID_PACKAGE || 'com.talktome.mobile',
     versionCode: Number(process.env.TALKTOME_MOBILE_BUILD_NUMBER || 30),
     adaptiveIcon: {
       backgroundColor: '#000000',

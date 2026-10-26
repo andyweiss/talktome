@@ -46,7 +46,7 @@ jobs:
         run: |
           echo "TALKTOME_MOBILE_VERSION=${APP_VERSION%%[-+]*}" >> "$GITHUB_ENV"
           echo "TALKTOME_MOBILE_BUILD_NUMBER=$((29 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "TALKTOME_ANDROID_PACKAGE=${ANDROID_PACKAGE:-com.example.talktome}.sideload" >> "$GITHUB_ENV"
+          echo "TALKTOME_ANDROID_PACKAGE=${ANDROID_PACKAGE:-com.talktome.mobile}.sideload" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v6
         with:
           node-version: '22'

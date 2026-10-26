@@ -64,9 +64,9 @@ configuration checks alongside the existing server and desktop checks.
 `scripts/upload-release-asset.sh`. Builds always upload an Actions artifact;
 tag/manual-version builds also upload the APK to the shared GitHub release
 draft. This APK uses debug signing for sideload testing. It is not a Play Store
-upload artifact. Set repository variable `TALKTOME_ANDROID_PACKAGE` to the
-publisher's final Play package name before distributing it. The APK appends
-`.sideload` to that base (development fallback: `com.example.talktome.sideload`)
+upload artifact. The Android package defaults to `com.talktome.mobile`;
+repository variable `TALKTOME_ANDROID_PACKAGE` can override it for a fork.
+The APK appends `.sideload` to that base (`com.talktome.mobile.sideload` by default)
 so it can coexist with the differently signed Play app. Profiles are separate;
 the two installations do not update each other.
 
@@ -147,8 +147,8 @@ though runner environment variables are not automatically forwarded to cloud
 builds. For iOS, the App Store Connect app ID is also written into the submission
 profile. No signing key is written to the repository or the uploaded source.
 The committed config contains the public Talktome Expo project identity, but no
-Apple-team or Store ID; local development defaults to `com.example.talktome`
-without a signing team.
+Apple-team or Store ID. Android defaults to `com.talktome.mobile`; iOS still
+defaults to `com.example.talktome` without a signing team until Apple setup is complete.
 See [Expo's build-profile environment documentation](https://docs.expo.dev/build/eas-json/).
 
 For interactive EAS development/preview builds, export the same identity
