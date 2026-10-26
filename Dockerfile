@@ -33,7 +33,6 @@ ENV NODE_ENV=production \
   TALKTOME_NO_WIZARD=1 \
   TALKTOME_DATA_DIR=/data \
   MDNS_HOST=off \
-  HTTPS_PORT=8443 \
   HTTP_PORT=8080
 
 VOLUME ["/data"]

@@ -4336,9 +4336,10 @@
                   <label for="web-access-port">Backend port</label>
                   <input id="web-access-port" type="number" min="1" max="65535" required />
                 </div>
-                <div class="field-group field-group--stacked is-hidden" data-web-access-proxy-field>
+                <div class="field-group field-group--stacked">
                   <label for="web-access-public-url">Public HTTPS URL (optional)</label>
-                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com" />
+                  <input id="web-access-public-url" type="url" placeholder="https://talktome.example.com:55443" aria-describedby="web-access-public-url-hint" />
+                  <div id="web-access-public-url-hint" class="setting-meta">Address clients use to reach this server, including the external port if needed. Used for shared links and QR codes in both TLS modes. Does not change the backend port or Docker port mapping.</div>
                 </div>
                 <div class="field-group field-group--stacked is-hidden" data-web-access-proxy-field>
                   <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>

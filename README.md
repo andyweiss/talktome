@@ -88,6 +88,17 @@ docker run -d --restart unless-stopped --name talktome \
 ```
 
 Open `https://<HOST-IP>:8443/`. Allow the HTTPS port and the configured RTC port range in your firewall.
+The web port defaults to 8443 in containers (443 outside containers). It can be
+changed in Admin → Config → Network → Web Access; restart the server and update
+Docker port publishing to match. An explicit `PORT` or `HTTPS_PORT` environment
+variable overrides the saved port and locks the Admin field.
+If the external port differs from the backend port (for example `55443:8443`),
+set **Public HTTPS URL** in Web Access to `https://<HOST-IP>:55443` and restart
+the server. This URL is used for shared login links and Media Network QR codes
+with both built-in HTTPS and reverse-proxy HTTPS. It does not change the backend
+port or Docker mapping. Without a public URL, Media Network QR codes use each
+active media address and the backend port; login links prefer a usable browser
+request address before falling back to a media address.
 The Admin `Config` page can restart the server. Docker deployments use their
 configured restart policy (as in the examples above).
 

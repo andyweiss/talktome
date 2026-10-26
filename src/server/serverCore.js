@@ -22,6 +22,7 @@ const { resetPeerMediaTransportStatus, updatePeerMediaTransportStatus, describeP
 const { buildGuestLoginUrl, buildLoginUrl, buildMediaNetworkQrTargets, normalizeConnectUrl, selectAdminQrUrl } = require("./qrConnectUrl");
 const { buildWebRtcListenInfos, resolveClientIceConfig } = require("./webrtcConfig");
 const { normalizeWebAccess, resolveWebAccess, createWebServer, requestConnectOrigin } = require("./webAccess");
+const { isRunningInContainer } = require("./runtimeEnvironment");
 const {
   listMediaNetworkInterfaces,
   normalizeSocketAddress,
@@ -4202,7 +4203,7 @@ async function buildAdminMediaNetworkQrPayload(activeAddresses, req = null) {
 
   const targets = buildMediaNetworkQrTargets({
     addresses: activeAddresses, protocol: WEB_PROTOCOL, port: HTTPS_PORT,
-    tlsMode: WEB_ACCESS.tlsMode, proxyUrl: qrUrl,
+    tlsMode: WEB_ACCESS.tlsMode, publicUrl: configuredPublicConnectUrl, proxyUrl: qrUrl,
   });
   const qrCodes = await Promise.all(targets.map(async target => {
     if (target.qrUrl === qrUrl) return { ...target, qrCodeDataUrl };
@@ -6584,18 +6585,6 @@ function getStartupHosts() {
   }
 
   return Array.from(new Set(getLocalIPv4Addresses()));
-}
-
-function isRunningInContainer() {
-  if (process.env.TALKTOME_RUNNING_IN_CONTAINER === "1") return true;
-  if (fs.existsSync("/.dockerenv")) return true;
-
-  try {
-    const cgroup = fs.readFileSync("/proc/1/cgroup", "utf8");
-    return /docker|containerd|kubepods|podman/i.test(cgroup);
-  } catch {
-    return false;
-  }
 }
 
 function encodeDnsName(name) {

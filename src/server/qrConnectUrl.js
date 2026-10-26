@@ -47,7 +47,7 @@ function selectAdminQrUrl({ configuredUrl, requestUrl, adapterUrl } = {}) {
   const requested = normalizeConnectUrl(requestUrl);
   const adapter = normalizeConnectUrl(adapterUrl);
 
-  if (configured && !isMdnsConnectUrl(configured)) return configured;
+  if (configured) return configured;
   if (requested && !isLocalOnlyConnectUrl(requested) && !isMdnsConnectUrl(requested)) {
     return requested;
   }
@@ -66,7 +66,9 @@ function buildGuestLoginUrl(connectUrl) {
   return normalized ? `${normalized}/#guest` : "";
 }
 
-function buildMediaNetworkQrTargets({ addresses = [], protocol = "https", port, tlsMode = "internal", proxyUrl } = {}) {
+function buildMediaNetworkQrTargets({ addresses = [], protocol = "https", port, tlsMode = "internal", publicUrl, proxyUrl } = {}) {
+  const configured = normalizeConnectUrl(publicUrl);
+  if (configured) return [{ address: new URL(configured).hostname, qrUrl: configured }];
   const activeAddresses = [...new Set(addresses.filter(Boolean))];
   if (tlsMode === "proxy") {
     const qrUrl = normalizeConnectUrl(proxyUrl);

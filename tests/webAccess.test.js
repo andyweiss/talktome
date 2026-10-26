@@ -12,6 +12,31 @@ const { io } = require('socket.io-client');
 const { Server } = require('socket.io');
 const { normalizeWebAccess, resolveWebAccess, createWebServer, requestConnectOrigin } = require('../src/server/webAccess');
 
+test('container fallback stays editable and saved ports take precedence', () => {
+  const env = { TALKTOME_RUNNING_IN_CONTAINER: '1' };
+  const defaults = resolveWebAccess({}, env);
+  assert.equal(defaults.httpsPort, 8443);
+  assert.deepEqual(defaults.environmentOverrides, []);
+  assert.equal(normalizeWebAccess({}, env).httpsPort, 8443, 'Admin must show the same fallback');
+
+  const saved = { httpsPort: 55443 };
+  assert.equal(resolveWebAccess(saved, env).httpsPort, 55443);
+  assert.deepEqual(resolveWebAccess(saved, env).environmentOverrides, []);
+  const explicit = resolveWebAccess(saved, { ...env, HTTPS_PORT: '9443' });
+  assert.equal(explicit.httpsPort, 9443);
+  assert.deepEqual(explicit.environmentOverrides, ['httpsPort']);
+  assert.equal(resolveWebAccess(saved, { ...env, HTTPS_PORT: '9443', PORT: '10443' }).httpsPort, 10443);
+});
+
+test('native fallback remains 443 without locking the Admin field', t => {
+  const fs = require('node:fs');
+  t.mock.method(fs, 'existsSync', () => false);
+  t.mock.method(fs, 'readFileSync', () => { throw new Error('No container cgroup'); });
+  const access = resolveWebAccess({}, {});
+  assert.equal(access.httpsPort, 443);
+  assert.deepEqual(access.environmentOverrides, []);
+});
+
 test('web access defaults, environment precedence and validation', () => {
   assert.equal(resolveWebAccess({}, {}).tlsMode, 'internal');
   const active = resolveWebAccess({ tlsMode: 'internal', httpsPort: 8443 }, { TALKTOME_TLS_MODE: 'proxy', PORT: '8080' });
