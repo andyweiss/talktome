@@ -149,8 +149,10 @@ profile. No signing key is written to the repository or the uploaded source.
 The committed config contains the public Talktome Expo project identity. The
 production profile in `eas.json` uses iOS bundle ID `de.talktome.app`, Apple team
 `FRVSN9AQLM` and App Store Connect app ID `6827440765`; signing credentials stay
-in EAS. Android defaults to `com.talktome.mobile`. Outside that profile or explicit
-environment settings, iOS defaults to `com.example.talktome` without a signing team.
+in EAS. Android defaults to `com.talktome.mobile`. The iOS app config also defaults
+to `de.talktome.app` and `FRVSN9AQLM`, so standalone commands such as `eas submit`
+resolve the same app without shell exports or a selected build profile. Forks can
+override the publisher identity with the corresponding environment variables.
 See [Expo's build-profile environment documentation](https://docs.expo.dev/build/eas-json/).
 
 For interactive EAS development/preview builds, export the same identity

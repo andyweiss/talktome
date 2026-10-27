@@ -15,13 +15,13 @@ function writeLocal(config: unknown) {
 }
 
 describe('local iOS signing', () => {
-  it('keeps upstream signing even when this machine has personal overrides', () => {
+  it('uses the publisher identity without shell exports even when local overrides exist', () => {
     writeLocal({ bundleIdentifier: 'com.example.private', appleTeamId: 'ABCDEFGHIJ' });
     expect(resolveIosSigning(root, {})).toEqual({
       local: false,
-      bundleIdentifier: 'com.example.talktome',
-      appleTeamId: undefined,
-      appGroup: 'group.com.example.talktome',
+      bundleIdentifier: 'de.talktome.app',
+      appleTeamId: 'FRVSN9AQLM',
+      appGroup: 'group.de.talktome.app',
     });
   });
 
@@ -56,7 +56,7 @@ describe('local iOS signing', () => {
   });
 
   it.each([
-    { bundleIdentifier: 'com.example.talktome', appleTeamId: 'ABCDEFGHIJ' },
+    { bundleIdentifier: 'de.talktome.app', appleTeamId: 'ABCDEFGHIJ' },
     { bundleIdentifier: 'not a bundle id', appleTeamId: 'ABCDEFGHIJ' },
     { bundleIdentifier: 'com.example.private', appleTeamId: '' },
   ])('rejects an incomplete or non-personal local signing config: %j', config => {

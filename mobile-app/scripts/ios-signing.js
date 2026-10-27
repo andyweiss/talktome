@@ -1,14 +1,18 @@
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 
+const DEFAULT_BUNDLE_IDENTIFIER = 'de.talktome.app';
+const DEFAULT_APPLE_TEAM_ID = 'FRVSN9AQLM';
+
 /** Personal signing is opt-in; normal builds never read this machine's overrides. */
 function resolveIosSigning(projectRoot, env = process.env) {
+  const publisherBundleIdentifier = env.TALKTOME_IOS_BUNDLE_IDENTIFIER || DEFAULT_BUNDLE_IDENTIFIER;
   if (env.TALKTOME_IOS_LOCAL !== '1') {
     return {
       local: false,
-      bundleIdentifier: env.TALKTOME_IOS_BUNDLE_IDENTIFIER || 'com.example.talktome',
-      appleTeamId: env.TALKTOME_APPLE_TEAM_ID || undefined,
-      appGroup: `group.${env.TALKTOME_IOS_BUNDLE_IDENTIFIER || 'com.example.talktome'}`,
+      bundleIdentifier: publisherBundleIdentifier,
+      appleTeamId: env.TALKTOME_APPLE_TEAM_ID || DEFAULT_APPLE_TEAM_ID,
+      appGroup: `group.${publisherBundleIdentifier}`,
     };
   }
 
@@ -22,7 +26,7 @@ function resolveIosSigning(projectRoot, env = process.env) {
     !local ||
     typeof local.bundleIdentifier !== 'string' ||
     !/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(local.bundleIdentifier) ||
-    local.bundleIdentifier === (env.TALKTOME_IOS_BUNDLE_IDENTIFIER || 'com.example.talktome') ||
+    local.bundleIdentifier === publisherBundleIdentifier ||
     typeof local.appleTeamId !== 'string' ||
     !/^[A-Z0-9]{10}$/.test(local.appleTeamId)
   ) {
