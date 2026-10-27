@@ -15,7 +15,8 @@
       "environment": "production",
       "env": {
         "TALKTOME_IOS_BUNDLE_IDENTIFIER": "de.talktome.app",
-        "TALKTOME_APPLE_TEAM_ID": "FRVSN9AQLM"
+        "TALKTOME_APPLE_TEAM_ID": "FRVSN9AQLM",
+        "TALKTOME_MOBILE_BUILD_NUMBER": "31"
       },
       "android": {
         "buildType": "app-bundle"
