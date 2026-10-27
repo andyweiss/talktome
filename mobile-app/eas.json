@@ -13,6 +13,10 @@
     },
     "production": {
       "environment": "production",
+      "env": {
+        "TALKTOME_IOS_BUNDLE_IDENTIFIER": "de.talktome.app",
+        "TALKTOME_APPLE_TEAM_ID": "FRVSN9AQLM"
+      },
       "android": {
         "buildType": "app-bundle"
       }
@@ -20,7 +24,9 @@
   },
   "submit": {
     "production": {
-      "ios": {},
+      "ios": {
+        "ascAppId": "6827440765"
+      },
       "android": {
         "track": "internal",
         "releaseStatus": "draft"

@@ -146,9 +146,11 @@ for that run. This ensures EAS workers use the same settings as GitHub even
 though runner environment variables are not automatically forwarded to cloud
 builds. For iOS, the App Store Connect app ID is also written into the submission
 profile. No signing key is written to the repository or the uploaded source.
-The committed config contains the public Talktome Expo project identity, but no
-Apple-team or Store ID. Android defaults to `com.talktome.mobile`; iOS still
-defaults to `com.example.talktome` without a signing team until Apple setup is complete.
+The committed config contains the public Talktome Expo project identity. The
+production profile in `eas.json` uses iOS bundle ID `de.talktome.app`, Apple team
+`FRVSN9AQLM` and App Store Connect app ID `6827440765`; signing credentials stay
+in EAS. Android defaults to `com.talktome.mobile`. Outside that profile or explicit
+environment settings, iOS defaults to `com.example.talktome` without a signing team.
 See [Expo's build-profile environment documentation](https://docs.expo.dev/build/eas-json/).
 
 For interactive EAS development/preview builds, export the same identity
