@@ -1,10 +1,12 @@
 import { applySetCookieHeaders, cookieHeader, readSetCookieHeaders, type CookieMap } from './cookieJar';
+import { fetchWithLocalNetworkRetry } from './localNetworkRetry';
 
 export type HttpClientOptions = {
   baseUrl: string;
   getCookies: () => CookieMap;
   setCookies: (next: CookieMap) => void;
   fetchImpl?: typeof fetch;
+  retryLocalNetworkErrors?: boolean;
 };
 
 export class TalkToMeHttp {
@@ -18,13 +20,17 @@ export class TalkToMeHttp {
       headers.set('Cookie', cookie);
     }
 
-    const response = await fetchImpl(joinUrl(this.options.baseUrl, path), {
+    const request: RequestInit = {
       ...init,
       // iOS appends supplied Cookie headers to native cookies when credentials
       // are included. Use our explicit jar alone once it contains a cookie.
       credentials: init.credentials ?? (headers.has('Cookie') ? 'omit' : 'include'),
       headers,
-    });
+    };
+    const url = joinUrl(this.options.baseUrl, path);
+    const response = this.options.retryLocalNetworkErrors
+      ? await fetchWithLocalNetworkRetry(fetchImpl, url, request)
+      : await fetchImpl(url, request);
 
     const next = applySetCookieHeaders(this.options.getCookies(), readSetCookieHeaders(response.headers));
     this.options.setCookies(next);

@@ -4,6 +4,7 @@ import { ApiClient } from '../auth/apiClient';
 import type { CookieMap } from '../auth/cookieJar';
 import { SessionConflictError, SessionCookieUnavailableError, TlsUntrustedError } from '../auth/errors';
 import { TalkToMeHttp } from '../auth/http';
+import { LocalNetworkUnavailableError } from '../auth/localNetworkRetry';
 import { hasSessionCookie, readNativeCookies } from '../auth/nativeCookies';
 import {
   requiresBrowserSessionCookie,
@@ -1081,6 +1082,7 @@ export class SessionController {
     useSessionStore.setState({ serverAppVersion: null });
     this.http = new TalkToMeHttp({
       baseUrl: parsed.baseUrl,
+      retryLocalNetworkErrors: Platform.OS === 'ios',
       getCookies: () => this.cookies,
       setCookies: (next) => {
         this.cookies = next;
@@ -1098,6 +1100,7 @@ export class SessionController {
       this.serverAppVersion = health.appVersion;
       useSessionStore.setState({ serverAppVersion: health.appVersion ?? null });
     } catch (error) {
+      if (error instanceof LocalNetworkUnavailableError) throw error;
       if (!looksLikeTlsFailure(error)) {
         useSessionStore.setState({
           statusMessage: 'Health check failed; trying login anyway.',
