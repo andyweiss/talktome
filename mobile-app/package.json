@@ -10,6 +10,7 @@
     "ios:local:prepare": "node scripts/ios-local-prepare.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:ios-audio-routes": "bash scripts/test-ios-audio-routes.sh",
     "test:watch": "vitest"
   },
   "dependencies": {

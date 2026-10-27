@@ -14,7 +14,11 @@ final class TalkToMeAudioSessionController {
   private var activeProfile = "idle"
   private var wantsBackgroundReceiveKeepalive = false
   private var backgroundTask = UIBackgroundTaskIdentifier.invalid
-  private var preferredRouteId = "speaker"
+  private var routePreference = TalkToMeAudioRoutePreference()
+  private var preferredRouteId: String {
+    get { routePreference.preferredId }
+    set { routePreference.preferredId = newValue }
+  }
   private var cuePlayer: AVAudioPlayer?
   var onRouteChange: (() -> Void)?
 
@@ -225,20 +229,41 @@ final class TalkToMeAudioSessionController {
   }
 
   private func applyPreferredRoute(_ session: AVAudioSession) throws {
+    guard !routePreference.isPickerPresented else { return }
     if preferredRouteId == "receiver" {
-      try session.overrideOutputAudioPort(.none)
+      try preferBuiltInMicrophone(session)
+      if !session.currentRoute.outputs.contains(where: { $0.portType == .builtInReceiver }) {
+        try session.overrideOutputAudioPort(.none)
+      }
       return
     }
     if preferredRouteId.hasPrefix("port:") {
       let uid = String(preferredRouteId.dropFirst(5))
       if let port = session.availableInputs?.first(where: { $0.uid == uid }) {
-        try session.setPreferredInput(port)
-        try session.overrideOutputAudioPort(.none)
+        if session.currentRoute.outputs.contains(where: { $0.portType == .builtInSpeaker }) {
+          try session.overrideOutputAudioPort(.none)
+        }
+        if session.preferredInput?.uid != port.uid {
+          try session.setPreferredInput(port)
+        }
         return
       }
       preferredRouteId = "speaker"
     }
-    try session.overrideOutputAudioPort(.speaker)
+    // A previous explicit AirPods input can pull duplex audio back to HFP after
+    // the speaker override. Switch the input too, and avoid self-triggered route
+    // notifications when the requested output is already active.
+    try preferBuiltInMicrophone(session)
+    if !session.currentRoute.outputs.contains(where: { $0.portType == .builtInSpeaker }) {
+      try session.overrideOutputAudioPort(.speaker)
+    }
+  }
+
+  private func preferBuiltInMicrophone(_ session: AVAudioSession) throws {
+    if let microphone = session.availableInputs?.first(where: { $0.portType == .builtInMic }),
+       session.preferredInput?.uid != microphone.uid {
+      try session.setPreferredInput(microphone)
+    }
   }
 
   private func listedRoutes(_ session: AVAudioSession, currentId: String) -> [[String: Any]] {
@@ -263,6 +288,9 @@ final class TalkToMeAudioSessionController {
     let outputs = session.currentRoute.outputs
     if outputs.contains(where: { $0.portType == .builtInSpeaker }) {
       return "speaker"
+    }
+    if outputs.contains(where: { $0.portType == .builtInReceiver }) {
+      return "receiver"
     }
     if let bluetooth = outputs.first(where: {
       $0.portType == .bluetoothHFP || $0.portType == .bluetoothA2DP || $0.portType == .bluetoothLE
@@ -348,6 +376,8 @@ final class TalkToMeAudioSessionController {
       AVAudioSession.routeChangeNotification,
       AVAudioSession.mediaServicesWereResetNotification,
       AVAudioSession.interruptionNotification,
+      TalkToMeAudioRoutePickerView.willPresentRoutes,
+      TalkToMeAudioRoutePickerView.didDismissRoutes,
     ]
     observers = names.map { name in
       notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
@@ -358,6 +388,18 @@ final class TalkToMeAudioSessionController {
 
   private func handle(_ notification: Notification) {
     let session = AVAudioSession.sharedInstance()
+    if notification.name == TalkToMeAudioRoutePickerView.willPresentRoutes {
+      routePreference.beginPicker()
+      return
+    }
+    if notification.name == TalkToMeAudioRoutePickerView.didDismissRoutes {
+      routePreference.endPicker(currentId: resolvedRouteId(session))
+      if activeProfile != "idle", session.category == .playAndRecord {
+        try? applyPreferredRoute(session)
+      }
+      onRouteChange?()
+      return
+    }
     guard session.category == .playAndRecord else {
       return
     }
@@ -370,22 +412,14 @@ final class TalkToMeAudioSessionController {
         let preferredStillAvailable =
           !preferredRouteId.hasPrefix("port:") ||
           session.availableInputs?.contains(where: { "port:\($0.uid)" == preferredRouteId }) == true
-        switch reason {
-        case .newDeviceAvailable:
-          // Plug in EarPods / BT: follow the new device.
-          preferredRouteId = resolved
-        case .oldDeviceUnavailable:
-          if !preferredStillAvailable {
-            preferredRouteId = "speaker"
-          }
-        case .override:
-          // Control Center / AVRoutePickerView is an explicit user choice.
-          preferredRouteId = resolved
-        default:
-          // Do not adopt a transient headphones-only route after the user picked Speaker.
-          break
+        let shouldRestore = routePreference.routeDidChange(
+          reason: TalkToMeAudioRoutePreference.ChangeReason(rawValue: reason.rawValue) ?? .other,
+          currentId: resolved,
+          preferredStillAvailable: preferredStillAvailable
+        )
+        if shouldRestore {
+          try? applyPreferredRoute(session)
         }
-        try? applyPreferredRoute(session)
         onRouteChange?()
         return
       }

@@ -27,6 +27,8 @@ cd mobile-app
 npm ci
 npm test
 npm run typecheck
+# On macOS, also test the native audio-route preference logic:
+npm run test:ios-audio-routes
 npx expo run:android
 # On macOS:
 npx expo run:ios

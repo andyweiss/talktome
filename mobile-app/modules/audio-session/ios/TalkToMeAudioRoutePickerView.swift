@@ -4,7 +4,9 @@ import UIKit
 
 /// Transparent hit target for Apple's system audio route picker (`AVRoutePickerView`).
 /// The React Native button draws the visible icon; this view only presents the iOS overlay.
-public final class TalkToMeAudioRoutePickerView: ExpoView {
+public final class TalkToMeAudioRoutePickerView: ExpoView, AVRoutePickerViewDelegate {
+  static let willPresentRoutes = Notification.Name("TalkToMeAudioRoutePickerWillPresent")
+  static let didDismissRoutes = Notification.Name("TalkToMeAudioRoutePickerDidDismiss")
   private let picker = AVRoutePickerView()
 
   public required init(appContext: AppContext? = nil) {
@@ -14,6 +16,7 @@ public final class TalkToMeAudioRoutePickerView: ExpoView {
     clipsToBounds = true
 
     picker.prioritizesVideoDevices = false
+    picker.delegate = self
     picker.tintColor = .clear
     picker.activeTintColor = .clear
     picker.backgroundColor = .clear
@@ -21,6 +24,14 @@ public final class TalkToMeAudioRoutePickerView: ExpoView {
     picker.accessibilityLabel = "Audio output"
     picker.accessibilityHint = "Choose speaker, iPhone, or a headset"
     addSubview(picker)
+  }
+
+  public func routePickerViewWillBeginPresentingRoutes(_ routePickerView: AVRoutePickerView) {
+    NotificationCenter.default.post(name: Self.willPresentRoutes, object: self)
+  }
+
+  public func routePickerViewDidEndPresentingRoutes(_ routePickerView: AVRoutePickerView) {
+    NotificationCenter.default.post(name: Self.didDismissRoutes, object: self)
   }
 
   public override func layoutSubviews() {
