@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
   Modal,
@@ -8,18 +8,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import { requireNativeViewManager } from 'expo-modules-core';
-
 import { describeAudioRouteKind, hasSystemRoutePicker, type AudioRouteKind } from '../audio/routes';
 import { session, useSessionStore } from '../session/store';
 import { HeadphonesIcon, PhoneIcon, SpeakerIcon } from './icons';
 import { colors } from './theme';
+import { IosSystemRoutePicker, iosSystemRoutePickerAvailable } from './IosSystemRoutePicker';
 
 export function AudioRouteButton() {
   const routes = useSessionStore((state) => state.audioRoutes);
   const selected = routes.find((route) => route.selected) ?? routes[0];
   const [open, setOpen] = useState(false);
-  const systemPicker = Platform.OS === 'ios' && hasSystemRoutePicker();
+  const systemPicker = iosSystemRoutePickerAvailable && hasSystemRoutePicker();
 
   useEffect(() => {
     session.refreshAudioDevices();
@@ -110,17 +109,6 @@ export function AudioRouteButton() {
       </Modal>
     </>
   );
-}
-
-function IosSystemRoutePicker() {
-  try {
-    const NativeView = requireNativeViewManager('TalkToMeAudioSession') as ComponentType<{
-      style?: object;
-    }>;
-    return <NativeView style={StyleSheet.absoluteFill} />;
-  } catch {
-    return null;
-  }
 }
 
 function RouteKindIcon({ kind }: { kind: AudioRouteKind }) {

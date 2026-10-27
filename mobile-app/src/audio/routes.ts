@@ -128,10 +128,20 @@ export async function selectAudioRoute(id: string): Promise<AudioRouteSnapshot> 
     return readAudioRouteSnapshot();
   }
   const result = await native.selectAudioRoute(id);
-  if (result && typeof result === 'object') {
-    return parseSnapshot(result, id);
+  let snapshot = result && typeof result === 'object'
+    ? parseSnapshot(result, id)
+    : readAudioRouteSnapshot();
+  // AVAudioSession can acknowledge a preference before currentRoute changes.
+  // Confirm the actual output for a bounded period instead of reporting the
+  // previous route as a failed selection. Keep real failures visible.
+  if (result !== false && (native.currentAudioRoute || native.audioRoutes)) {
+    for (let attempt = 0; attempt < 20 && snapshot.currentId !== id; attempt += 1) {
+      if (!snapshot.routes.some(route => route.id === id)) break;
+      await new Promise<void>(resolve => setTimeout(resolve, 100));
+      snapshot = readAudioRouteSnapshot();
+    }
   }
-  return readAudioRouteSnapshot();
+  return snapshot;
 }
 
 export function subscribeAudioRoutes(onChange: (snapshot: AudioRouteSnapshot) => void): () => void {
