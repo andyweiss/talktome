@@ -40,6 +40,11 @@
     "typescript": "~5.9.2",
     "vitest": "^4.1.12"
   },
+  "overrides": {
+    "@expo/metro": "56.1.0",
+    "@xmldom/xmldom@<0.9.0": "^0.8.15",
+    "zod": "^4.6.6"
+  },
   "expo": {
     "autolinking": {
       "nativeModulesDir": "./modules"

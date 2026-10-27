@@ -39,6 +39,23 @@ Rebuild the native binary after changing native modules or config plugins.
 The generated `android/` and `ios/` folders are ignored; local Expo modules in
 `modules/` and Apple extension sources in `targets/` are committed.
 
+### Dependency security
+
+CI runs `npm audit --audit-level=high` for the complete mobile dependency tree,
+including development tools. The SDK 56 toolchain needs three overrides:
+
+- `@expo/metro` 56.1.0 uses Metro 0.84.6, which replaces the vulnerable
+  `image-size` dependency with Metro's own image readers.
+- `@xmldom/xmldom` versions below 0.9 use the patched 0.8 line. This also covers
+  the older plist parser used by the Apple-targets Xcode plugin; the 0.9 line
+  keeps its own patched version.
+- Zod 4.6.6 or newer fixes collection-validation memory exhaustion. Its only
+  consumer here is Expo CLI's dev-tool/MCP schema handling.
+
+`src/config/toolingCompatibility.test.ts` exercises the actual plist parser,
+Metro image reader and Expo dev-tool schemas. Revisit these overrides when
+upgrading Expo SDK, and verify native prebuild plus iOS/Android exports.
+
 For local iPhone builds with a separate signing identity:
 
 ```bash
