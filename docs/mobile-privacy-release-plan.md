@@ -9,7 +9,8 @@ Stand: 28. Oktober 2026.
   und im bearbeitbaren App-Store-Entwurf gespeichert.
 - Kostenloser Preis eingerichtet; öffentliche Freigabe erfolgt manuell.
 - Build 33 mit Datenschutz-Link in TestFlight verfügbar.
-- Build 34 wurde lokal gebaut und zu Apple hochgeladen; er ergänzt die Audioauswahl innerhalb der App, einen neutralen,
+- Build 34 wurde lokal gebaut, von Apple verarbeitet und ist in der internen
+  TestFlight-Gruppe „Team“ verfügbar. Er ergänzt die Audioauswahl innerhalb der App, einen neutralen,
   abgerundeten Play-Pfeil und Scene-Start für das iOS-27-SDK.
 
 Der aktuelle Metadatenstand steht in
@@ -32,3 +33,5 @@ Aufnahmen nach „Done“ sind einschließlich der Statusleiste pixelgleich. Die
 Screenshot-Kopie deaktiviert ausschließlich im Simulator Audio-I/O wegen eines
 RemoteIO-RPC-Absturzes. Deshalb ersetzt dies keine Hör-/AirPods-Prüfung auf echter
 Hardware; die veröffentlichte Geräte-App enthält diese Simulator-Anpassung nicht.
+
+Englische und deutsche TestFlight-Testhinweise sind bei Build 34 hinterlegt.
