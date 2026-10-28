@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { visibleProductionName } from '../protocol';
 import { session, useSessionStore } from '../session/store';
 import { QrIcon, TrashIcon } from './icons';
+import { PrivacyPolicyLink } from './PrivacyPolicyLink';
 import { colors } from './theme';
 
 export function ProfilePickerScreen() {
@@ -69,6 +70,7 @@ export function ProfilePickerScreen() {
       <Pressable accessibilityRole="button" onPress={() => session.startAddProfile()} style={styles.add}>
         <Text style={styles.addText}>Add profile</Text>
       </Pressable>
+      <PrivacyPolicyLink />
     </View>
   );
 }

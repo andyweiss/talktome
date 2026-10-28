@@ -6,6 +6,7 @@ import { connectionHealthFromSession } from '../session/connectionHealth';
 import { session, useSessionStore } from '../session/store';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { TrashIcon } from './icons';
+import { PrivacyPolicyLink } from './PrivacyPolicyLink';
 import {
   SettingsActionRow,
   SettingsHint,
@@ -108,6 +109,9 @@ export function SessionPage({
         <Pressable accessibilityRole="button" onPress={disconnect} style={[styles.row, styles.actionTop]}>
           <Text style={[styles.navLabel, styles.destructiveLabel]}>Disconnect</Text>
         </Pressable>
+      </SettingsSection>
+      <SettingsSection title="About">
+        <PrivacyPolicyLink settings />
       </SettingsSection>
     </>
   );

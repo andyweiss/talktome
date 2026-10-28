@@ -19,6 +19,7 @@ import { formatFingerprint } from '../servers/fingerprint';
 import { session, useSessionStore } from '../session/store';
 import { QrIcon } from './icons';
 import { QrScannerModal } from './QrScannerModal';
+import { PrivacyPolicyLink } from './PrivacyPolicyLink';
 import { isCompactOperatorScreen } from './layers';
 import { colors } from './theme';
 
@@ -368,6 +369,7 @@ export function LoginScreen() {
           {store.error ? <Text style={styles.error}>{store.error}</Text> : null}
           {store.statusMessage ? <Text style={styles.status}>{store.statusMessage}</Text> : null}
         </View>
+        <PrivacyPolicyLink />
       </ScrollView>
 
       <View style={styles.actions}>
