@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "bd919d4",
+  "appVersion": "1.0.0",
+  "buildNumber": "34",
+  "locales": [
+    "en-GB",
+    "de-DE"
+  ],
+  "note": "The app UI is English in both store locales. Real simulator UI with local demo accounts. Device audio I/O was disabled only in the temporary screenshot checkout to avoid Simulator RemoteIO RPC aborts; the shipped device build uses normal audio.",
+  "sets": [
+    {
+      "device": "iphone",
+      "displayType": "APP_IPHONE_67",
+      "pixels": [
+        1320,
+        2868
+      ],
+      "files": [
+        {
+          "file": "iphone/01-operator.png",
+          "sha256": "19f5346444871f003afcc596677dcc1ac095c4a41d81a9528c826d92e3de3bf4"
+        },
+        {
+          "file": "iphone/02-audio-output.png",
+          "sha256": "fe4fb8549938f1f35a053cb5b80b417c2c924709de853f3a34eaf7e30684e41e"
+        },
+        {
+          "file": "iphone/03-audio-settings.png",
+          "sha256": "0729d1f09790d769ca2c6c81d58810e9c8b1e96e377cbdd32a19c139cac7eb4d"
+        }
+      ]
+    },
+    {
+      "device": "ipad",
+      "displayType": "APP_IPAD_PRO_3GEN_129",
+      "pixels": [
+        2752,
+        2064
+      ],
+      "files": [
+        {
+          "file": "ipad/01-operator.png",
+          "sha256": "6c84c4659a17f9b8987c25c05d1234d5ee22b2c1c63c8b6c2a42b079c1ea31c7"
+        },
+        {
+          "file": "ipad/02-audio-output.png",
+          "sha256": "ab5a25c2c3f0b73c1e6da921c7a44cd639d4426033ba224213720022643d8c65"
+        },
+        {
+          "file": "ipad/03-audio-settings.png",
+          "sha256": "534e13985129bcac35020dee1d0fc36a51108e9d4e60fbdcfab5b7ee47cfd798"
+        }
+      ]
+    },
+    {
+      "device": "watch",
+      "displayType": "APP_WATCH_SERIES_10",
+      "pixels": [
+        416,
+        496
+      ],
+      "files": [
+        {
+          "file": "watch/01-reply.png",
+          "sha256": "512741f4d85a3abf54c4abd38299754e5aaf0bbbcc72fe6ab272f13eed9a972f"
+        }
+      ]
+    }
+  ]
+}
