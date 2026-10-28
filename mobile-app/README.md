@@ -71,6 +71,8 @@ The helper backs up the existing native project under `.expo/ios-backups/`,
 generates a fresh project and configures Release execution without Metro.
 `ios.local.json` is ignored and used only with `TALKTOME_IOS_LOCAL=1`.
 All iOS builds use scene-based startup, including compatibility with the iOS 27 SDK.
+Prebuild also enables verbose output for ExpoModulesJSI’s nested framework build
+to avoid Xcode 27’s false archive failure with `-quiet`; build errors remain visible.
 Run `pod install` in `ios/` after native dependency
 changes, or regenerate after config-plugin changes.
 

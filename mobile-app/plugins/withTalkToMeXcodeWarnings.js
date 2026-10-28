@@ -1,4 +1,7 @@
-const { withPodfile, withXcodeProject } = require('expo/config-plugins');
+const { withDangerousMod, withPodfile, withXcodeProject } = require('expo/config-plugins');
+
+const { readFileSync, writeFileSync } = require('node:fs');
+const { dirname, join } = require('node:path');
 
 const STRIP_PHASE = '[Expo Dev Launcher] Strip Local Network Keys for Release';
 const POD_DEPLOYMENT_MARKER = '# talktome-pod-deployment-target';
@@ -25,6 +28,20 @@ function alignPodDeploymentTargets(contents) {
 }
 
 function withTalkToMeXcodeWarnings(config) {
+  config = withDangerousMod(config, ['ios', async mod => {
+    // Xcode 27 can turn diagnostics from a nested quiet Swift build into a
+    // spurious archive error, even when that command exits successfully.
+    // Keep the diagnostics visible; no errors or exit statuses are suppressed.
+    // https://github.com/expo/expo/issues/50311
+    const packageRoot = dirname(require.resolve('expo-modules-jsi/package.json', {
+      paths: [mod.modRequest.projectRoot],
+    }));
+    const script = join(packageRoot, 'apple/scripts/build-xcframework.sh');
+    const before = readFileSync(script, 'utf8');
+    const after = before.replace(/^[ \t]*-quiet \\\r?\n/gm, '');
+    if (after !== before) writeFileSync(script, after);
+    return mod;
+  }]);
   config = withPodfile(config, (mod) => {
     mod.modResults.contents = alignPodDeploymentTargets(mod.modResults.contents);
     return mod;
