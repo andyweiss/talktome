@@ -30,7 +30,7 @@
     "dim_feeds_while_speaking": false,
     "dim_when_addressed": true,
     "jitter_min_ms": 20,
-    "jitter_max_ms": 120,
+    "jitter_max_ms": 400,
     "reopen_ms": 2000,
     "default_volume_db": 0
   },

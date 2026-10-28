@@ -493,7 +493,7 @@ impl Default for AudioConfig {
             dim_when_addressed: true,
             play_connection_sounds: default_play_connection_sounds(),
             jitter_min_ms: 20,
-            jitter_max_ms: 120,
+            jitter_max_ms: 400,
             reopen_ms: 2000,
             default_volume: 0.9,
             default_volume_db: None,

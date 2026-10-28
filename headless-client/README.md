@@ -218,10 +218,15 @@ estimated loudspeaker-to-mic delay if residual echo remains.
 ## Latency
 
 The default codec profile is `ultra-low` (5 ms Opus, no FEC), the same
-profile the web client uses. The receive jitter buffer starts at
-`audio.jitter_min_ms` (20) and only grows toward `audio.jitter_max_ms`
-(120) after an underrun, then eases back after five seconds of clean
-audio. `audio.device_period_ms` (default 10) is the ALSA period; the
+profile the web client uses. The receive jitter buffer follows the
+link like a browser does: its depth is the spread of packet delays over
+the last 10 s, between `audio.jitter_min_ms` (20) and
+`audio.jitter_max_ms` (400). On a quiet LAN it stays near the minimum; a
+mobile caller whose packets stall and then arrive in bursts gets the
+depth needed to play them without dropouts. Short gaps are filled with
+Opus concealment, and extra depth is removed gradually instead of by
+cutting audio. Configurations that still set `jitter_max_ms = 120` limit
+how far it can adapt. `audio.device_period_ms` (default 10) is the ALSA period; the
 device buffer is two of those. `0` keeps the driver default, which on
 many cards is several times larger.
 

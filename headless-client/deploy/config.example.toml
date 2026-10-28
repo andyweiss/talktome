@@ -62,7 +62,7 @@ dim_when_addressed = true
 # A live user-audio-settings-updated playConnectionSounds value overrides this.
 play_connection_sounds = true
 jitter_min_ms = 20
-jitter_max_ms = 120
+jitter_max_ms = 400
 reopen_ms = 2000
 default_volume_db = 0
 # default_volume = 0.9   # legacy 0–1; ignored when default_volume_db is set

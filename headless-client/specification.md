@@ -491,11 +491,15 @@ written to WAV by the second instance (289 packets for a 6 s tone; the first
   The offer keeps `minptime=10` (router and browser) and sets `ptime` to
   the frame size. Frames go straight to a `TrackLocalStaticSample`.
 - **Decode**: per consumer, RTP → Opus decode with PLC/FEC → jitter buffer
-  → mixer. Playout starts at `audio.jitter_min_ms` (20). The buffer is
-  trimmed to that target plus one frame, so a burst does not sit at
-  `audio.jitter_max_ms` (120). An underrun raises the target by one frame
-  up to the maximum and waits for that depth again; five seconds of clean
-  audio lowers it by one frame.
+  → mixer. The playout target is the spread of packet arrival delays over
+  the last 10 s plus one frame, between `audio.jitter_min_ms` (20) and
+  `audio.jitter_max_ms` (400), so a link that stalls and then bursts
+  (mobile networks) keeps the burst instead of losing it. A late packet is
+  bridged with up to 100 ms of Opus concealment before the stream goes
+  quiet and re-primes. Excess depth is shed gradually: quiet 2.5 ms
+  stretches first, otherwise one sample in 100 (one in 25 when far too
+  deep). Only a depth beyond the maximum plus four frames is cut, with a
+  5 ms crossfade.
 - **Mixer**: `out = Σ source_i × volume_i × (muted_i ? 0 : 1) × dim_i`,
   soft-clipped. `dim_i` implements `dimFeedsWhileSpeaking` (feeds dimmed by
   `audio.dim_db`, default −15 dB, while the user talks) and
@@ -846,7 +850,7 @@ values (e.g. `TALKTOME_USER_PASSWORD`), which is also how the systemd
              "auto_processing": false,
              "dim_db": -15, "dim_feeds_while_speaking": false,
              "dim_when_addressed": true,
-             "jitter_min_ms": 20, "jitter_max_ms": 120, "reopen_ms": 2000,
+             "jitter_min_ms": 20, "jitter_max_ms": 400, "reopen_ms": 2000,
              "default_volume_db": 0 },
   "vox": { "enabled": false, "target": "conference:1", "threshold_db": -32, "hang_ms": 600 },
   "talk": { "tap_ms": 250, "lock_multiple": false, "main_target": null },
