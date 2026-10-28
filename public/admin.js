@@ -3428,19 +3428,29 @@ async function updateConferenceParticipantOptions(confId, allUsers, previousInde
   selectNextByIndex(select, previousIndex);
 }
 
+function createAssignmentChip(label, onRemove) {
+  const chip = document.createElement('li');
+  chip.className = 'list-chip';
+  const name = document.createElement('span');
+  name.className = 'chip-label';
+  name.textContent = String(label ?? '');
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'small danger';
+  remove.textContent = 'Remove';
+  remove.addEventListener('click', onRemove);
+  chip.append(name, remove);
+  return chip;
+}
+
 async function renderUserConferenceList(userId) {
   const confUl = document.getElementById(`user-confs-${userId}`);
   if (!confUl) return;
 
   const confs = await fetchJSON(`/users/${userId}/conferences`);
-  confUl.innerHTML = confs.length
-    ? confs.map(c => `
-        <li class="list-chip">
-          <span class="chip-label">${escapeHtml(c.name)}</span>
-          <button type="button" class="small danger" onclick="confirmUnassign(${userId}, ${c.id})">Remove</button>
-        </li>
-      `).join('')
-    : '';
+  confUl.replaceChildren(...confs.map(c => (
+    createAssignmentChip(c.name, () => confirmUnassign(userId, c.id))
+  )));
 }
 
 async function renderConferenceParticipantList(confId) {
@@ -3449,14 +3459,9 @@ async function renderConferenceParticipantList(confId) {
 
   const users = await fetchJSON(`/conferences/${confId}/users`);
   cacheConferenceMemberships(confId, users);
-  usersUl.innerHTML = users.length
-    ? users.map(u => `
-        <li class="list-chip">
-          <span class="chip-label">${escapeHtml(u.name)}</span>
-          <button type="button" class="small danger" onclick="confirmUnassign(${u.id},${confId})">Remove</button>
-        </li>
-      `).join('')
-    : '';
+  usersUl.replaceChildren(...users.map(u => (
+    createAssignmentChip(u.name, () => confirmUnassign(u.id, confId))
+  )));
 }
 
 // Fetch and render targets + rebuild the “type → id” dropdown
@@ -3474,19 +3479,33 @@ async function loadUserTargets(userId, allUsers, allConfs, allFeeds = []) {
   const ul = document.getElementById(`user-targets-${userId}`);
   updateBridgeTriggerTargetOptions(userId, targets);
   if (!ul) return;
-  ul.innerHTML = targets.map(t => {
+  ul.replaceChildren(...targets.map(t => {
     const isConference = t.targetType === 'conference';
-    return `
-      <li class="list-chip draggable-target" draggable="true"
-          data-type="${escapeHtml(t.targetType)}" data-id="${escapeHtml(t.targetId)}">
-        <span class="drag-handle" title="Drag to reorder">☰</span>
-        <span class="chip-label">${escapeHtml(t.name)}</span>
-        <span class="badge">${escapeHtml(t.targetType)}</span>
-        ${isConference ? '<span class="badge" title="Conference membership">membership</span>' : ''}
-        <button type="button" class="small danger" onclick="removeTarget(${userId}, '${t.targetType}', '${t.targetId}')">Remove</button>
-      </li>
-    `;
-  }).join('');
+    const targetType = String(t.targetType ?? '');
+    const targetId = String(t.targetId ?? '');
+    const chip = createAssignmentChip(t.name, () => removeTarget(userId, targetType, targetId));
+    chip.classList.add('draggable-target');
+    chip.draggable = true;
+    chip.dataset.type = targetType;
+    chip.dataset.id = targetId;
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.title = 'Drag to reorder';
+    handle.textContent = '☰';
+    chip.prepend(handle);
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = targetType;
+    chip.insertBefore(badge, chip.lastElementChild);
+    if (isConference) {
+      const membership = document.createElement('span');
+      membership.className = 'badge';
+      membership.title = 'Conference membership';
+      membership.textContent = 'membership';
+      chip.insertBefore(membership, chip.lastElementChild);
+    }
+    return chip;
+  }));
   initTargetOrdering(userId, ul);
 
   const selType = document.getElementById(`add-target-type-${userId}`);

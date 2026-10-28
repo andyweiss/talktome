@@ -32,24 +32,27 @@ actual Xcode project-ID generator. See
 | #83 — Public `node_modules` | 1 | **Unnecessary information exposure.** The entire dependency directory was served publicly. | **Fixed:** remove the static mount. Browser bundles retain their explicit public URLs; update the debug page and verify dependency paths return 404. |
 | #1 — Hostname regexp | 1 | **Valid performance-hardening finding.** The trailing-dot regexp can backtrack on long dot runs followed by another character. Exploitability depends on access to hostname configuration. | **Fixed:** replace it with a linear trailing-dot scan and test long inputs. |
 | #70–72 — Log format strings | 3 | **Diagnostic integrity issue.** In Node.js this is not native printf memory corruption, but percent directives in interpolated values can alter formatting of additional arguments. | **Fixed:** use constant format strings and separate arguments. Request fallback logs also omit query strings to reduce accidental credential logging. |
-| #73–75 — DOM text reused as HTML | 3 | **No exploitable path established in the reviewed renderers.** Names pass through `escapeHtml`; target types are SQL literals and IDs come from integer DB columns. Inline event-handler interpolation is nevertheless brittle. | Prefer DOM creation and event listeners in a future UI hardening change. Keep these findings open until a focused data-flow/regression review confirms dismissal or replaces those sinks. |
-| #76–77 — SQL injection | 2 | **False positives in these functions.** `bridgeEndpointTable()` first rejects every kind except the literal strings `user` and `feed`; that same validated kind is used in the column name. Actual values use bound parameters. | Keep the allowlist and parameter binding. Documented dismissal is appropriate; no SQL rewrite is needed for security. |
-| #79 — Clear-text SSO logging | 1 | **False positive for credential disclosure.** The message prints a configured header *name* and proxy allowlist, not the header's value or a password/token. | No credential-handling change required. Treat these as ordinary deployment metadata in logs. |
-| #80–82 — TLS checks in local probes | 3 | **Intentional, narrowly scoped exception.** All three calls target hard-coded `127.0.0.1`, carry no credentials and probe a local self-signed server for health/static-asset checks. | Retain the loopback restriction and bounded requests. Do not copy these options into external/authenticated clients. Documented exception/dismissal is reasonable. |
-| #66 — HTML filter regexp | 1 | **False positive.** This is an assertion in `tests/mediaStatus.test.js`, not an HTML sanitizer. | No production change required. |
+| #73–75 — DOM text reused as HTML | 3 | **Preventive hardening.** The old renderers escaped names but interpolated identifiers into inline event handlers. | **Fixed:** the three lists now use DOM elements, `textContent`, dataset properties and function event listeners. Regression tests cover hostile text/identifiers, removal callbacks, empty lists and drag metadata. Await automatic CodeQL confirmation. |
+| #76–77 — SQL injection | 2 | **False positives in these functions.** `bridgeEndpointTable()` first rejects every kind except the literal strings `user` and `feed`; that same validated kind is used in the column name. Actual values use bound parameters. | Dismissed as false positives with the allowlist/parameter-binding rationale. Keep both protections. |
+| #79 — Clear-text SSO logging | 1 | **False positive for credential disclosure.** The message prints a configured header *name* and proxy allowlist, not the header's value or a password/token. | Dismissed as a false positive with this rationale. Treat these as ordinary deployment metadata in logs. |
+| #80–82 — TLS checks in local probes | 3 | **Intentional, narrowly scoped exception.** All three calls target hard-coded `127.0.0.1`, carry no credentials and probe a local self-signed server for health/static-asset checks. | Dismissed as `won't fix`, documenting the loopback/credential-free exception. Reassess if the destination becomes external/configurable or credentials are introduced. |
+| #66 — HTML filter regexp | 1 | **False positive.** This is an assertion in `tests/mediaStatus.test.js`, not an HTML sanitizer. | Dismissed as a false positive, documenting the test-only assertion. |
 | #3–4 — User-controlled timer duration | 2 | **Duration is already bounded.** `parseCompanionWaitMs()` clamps to 100–10,000 ms before these timers are created. | No unbounded-duration bug demonstrated. Clearing the losing timeout when a command resolves would be useful resource hygiene; concurrent-request control belongs with the rate-limiting work. |
-| #2 — Insufficient password hashing | 1 | **False positive.** This hashes a `ttm_bridge_` token generated from 32 cryptographically random bytes, not a human password. | SHA-256 and timing-safe comparison are suitable for these high-entropy tokens. Do not replace this with bcrypt merely to satisfy the password rule. |
+| #2 — Insufficient password hashing | 1 | **False positive.** This hashes a `ttm_bridge_` token generated from 32 cryptographically random bytes, not a human password. | Dismissed as a false positive with the 256-bit random-token rationale. Retain SHA-256 and timing-safe comparison for these tokens. |
 
 ## Recommended next changes
 
-1. Bridge TLS trust/pinning, preserving usable self-signed local connections.
+1. Bridge TLS trust/pinning, preserving explicitly selected HTTP and usable
+   self-signed local connections. Remember explicitly trusted certificate
+   fingerprints per server and prompt again if a certificate changes.
 2. Bridge credential-store migration for both API keys and Bridge tokens.
 3. Authentication/expensive-operation rate limits, plus migration away from
    query credentials.
-4. DOM-based construction of the three flagged Admin lists and cancellation
-   of command-wait timers after early completion.
+4. Cancellation of command-wait timers after early completion.
 
-These remaining items are intentionally reported as open work. This review
-does not dismiss alerts or change CodeQL exclusions. The five small server
-findings addressed here should be checked against the next CodeQL analysis;
-the other findings remain visible for an explicit remediation or dismissal.
+On 2026-10-28, the eight reviewed exceptions/false positives (#2, #66, #76,
+#77 and #79–82) were dismissed following
+the publisher's instruction, with a specific reason on each GitHub alert.
+No CodeQL exclusions were added. The first five server findings were confirmed
+fixed by CodeQL; the three DOM findings are addressed in code and await the
+next analysis. The remaining items above stay open work.
