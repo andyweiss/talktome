@@ -7,6 +7,14 @@ const metroRequire = createRequire(expoRequire.resolve('@expo/metro/package.json
 const xcodeRequire = createRequire(require.resolve('@bacons/xcode'));
 
 describe('security-updated Expo tooling', () => {
+  it('generates Xcode project IDs through the patched CommonJS UUID dependency', () => {
+    const project = require('xcode').project('unused.pbxproj');
+    project.hash = { project: { objects: {} } };
+    const ids = Array.from({ length: 20 }, () => project.generateUuid());
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[A-F0-9]{24}$/);
+  });
+
   it('round-trips Apple property lists through the Xcode plugin parser', () => {
     const plist = xcodeRequire('@expo/plist').default;
     const values = {
