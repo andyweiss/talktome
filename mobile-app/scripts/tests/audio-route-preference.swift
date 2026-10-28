@@ -57,6 +57,22 @@ enum AudioRoutePreferenceTests {
       reason: .override, currentId: "speaker", preferredStillAvailable: true
     ))
     precondition(preference.preferredId == "speaker")
+    // Explicit in-app selection survives transient receiver/Bluetooth events.
+    preference.preferredId = "speaker"
+    precondition(preference.routeDidChange(
+      reason: .override, currentId: "receiver", preferredStillAvailable: true,
+      selectionInProgress: true
+    ))
+    precondition(preference.preferredId == "speaker")
+    precondition(!preference.routeDidChange(
+      reason: .override, currentId: "speaker", preferredStillAvailable: true,
+      selectionInProgress: true
+    ))
+    // After settling, Control Center can still choose another route.
+    precondition(preference.routeDidChange(
+      reason: .override, currentId: "port:airpods", preferredStillAvailable: true
+    ))
+    precondition(preference.preferredId == "port:airpods")
     print("Native audio route preference tests passed.")
   }
 }

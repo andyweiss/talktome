@@ -25,11 +25,17 @@ struct TalkToMeAudioRoutePreference {
   mutating func routeDidChange(
     reason: ChangeReason,
     currentId: String,
-    preferredStillAvailable: Bool
+    preferredStillAvailable: Bool,
+    selectionInProgress: Bool = false
   ) -> Bool {
     if isPickerPresented {
       preferredId = currentId
       return false
+    }
+    // setPreferredInput and overrideOutputAudioPort can report intermediate
+    // routes. Those notifications must not overwrite an explicit selection.
+    if selectionInProgress && preferredStillAvailable {
+      return currentId != preferredId
     }
     switch reason {
     case .newDeviceAvailable, .override:

@@ -26,6 +26,7 @@ export const WEB_AVATAR = {
 const WALKIE_TALKIE = require('../../assets/icons/walkie-talkies-white.png') as ImageSourcePropType;
 const SPEAKER_ON = require('../../assets/icons/speaker-white.png') as ImageSourcePropType;
 const SPEAKER_MUTED = require('../../assets/icons/speaker-muted.png') as ImageSourcePropType;
+const PLAY = require('../../assets/icons/play-rounded.png') as ImageSourcePropType;
 const REPLY = require('../../assets/icons/reply.png') as ImageSourcePropType;
 
 export function targetAvatarBackground(
@@ -133,23 +134,8 @@ export function StopIcon({ color = colors.text, size = 14 }: IconProps) {
   return <View style={{ width: size, height: size, borderRadius: 3, backgroundColor: color }} {...iconEvents} />;
 }
 
-export function PlayIcon({ color = colors.text, size = 14 }: IconProps) {
-  return (
-    <View
-      style={{
-        width: 0,
-        height: 0,
-        marginLeft: 2,
-        borderTopWidth: size * 0.42,
-        borderBottomWidth: size * 0.42,
-        borderLeftWidth: size * 0.72,
-        borderTopColor: 'transparent',
-        borderBottomColor: 'transparent',
-        borderLeftColor: color,
-      }}
-      {...iconEvents}
-    />
-  );
+export function PlayIcon({ color = colors.text, size = 18 }: IconProps) {
+  return <Image source={PLAY} style={{ width: size, height: size, tintColor: color }} {...iconEvents} />;
 }
 
 export function LockIcon({ color = colors.text, size = 16 }: IconProps) {

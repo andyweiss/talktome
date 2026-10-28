@@ -14,7 +14,7 @@ import { mainButtonStorageKey, resolveMainButton } from '../session/mainButton';
 import { session, useSessionStore } from '../session/store';
 import { slideToLockHint } from '../talk/slideToLock';
 import { ConferenceMembersModal } from './ConferenceMembersModal';
-import { AudioRouteButton } from './AudioRouteButton';
+import { AudioRouteButton, AudioRouteMenu } from './AudioRouteButton';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { ChevronIcon, LockIcon, ReplyArrowIcon, WalkieTalkieIcon } from './icons';
 import { HoldToTalk } from './HoldToTalk';
@@ -59,6 +59,7 @@ export function OperatorScreen() {
   const compact = isCompactOperatorScreen(width, height);
   const tablet = isTabletOperatorScreen(width, height);
   const [layerIndex, setLayerIndex] = useState(0);
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [conferenceTarget, setConferenceTarget] = useState<TalkTarget | null>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(compact);
   const [headerHeight, setHeaderHeight] = useState(96);
@@ -236,123 +237,126 @@ export function OperatorScreen() {
         headerCollapsed && styles.screenPeek,
       ]}
     >
-      {headerCollapsed ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Show top bar"
-          accessibilityHint="Reveals name, connection, audio route, and layers"
-          onPress={expandHeader}
-          style={styles.headerPeekCard}
-        >
-          <ChevronIcon color={colors.text} direction="down" size={14} />
-        </Pressable>
-      ) : (
-        <View
-          style={[styles.header, compact && styles.headerCompact]}
-          onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-        >
+      <View style={{ flex: 1 }} accessibilityElementsHidden={audioMenuOpen} importantForAccessibility={audioMenuOpen ? 'no-hide-descendants' : 'auto'}>
+        {headerCollapsed ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Session, ${connection.label}`}
-            accessibilityHint="Server, layout, audio, accessories, debug, profiles, and disconnect"
-            onPress={() => openSessionSheet()}
-            style={styles.identity}
+            accessibilityLabel="Show top bar"
+            accessibilityHint="Reveals name, connection, audio route, and layers"
+            onPress={expandHeader}
+            style={styles.headerPeekCard}
           >
-            <View style={styles.nameRow}>
-              <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
-                {store.identity?.name ?? 'talktome'}
-              </Text>
-              <ConnectionStatusBadge health={connection} compact={compact} />
-            </View>
-            {productionLabel ? (
-              <Text style={styles.production} numberOfLines={1}>
-                {productionLabel}
-              </Text>
-            ) : null}
-            {tallyLabel && tallyColor ? (
-              <Text
-                accessibilityLabel={tallyLabel === 'PGM' ? 'On program' : 'On preview'}
-                style={[styles.tallyChip, { color: tallyColor }]}
-              >
-                {tallyLabel}
-              </Text>
-            ) : null}
+            <ChevronIcon color={colors.text} direction="down" size={14} />
           </Pressable>
-          <View style={styles.headerActions}>
-            {offerCollapse ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Hide top bar"
-                accessibilityHint="Gives the target cards more room on small screens"
-                onPress={collapseHeader}
-                style={[styles.collapseButton, compact && styles.collapseButtonCompact]}
-              >
-                <ChevronIcon color={colors.text} direction="up" />
-              </Pressable>
-            ) : null}
-            <AudioRouteButton />
-            {layerButton}
-          </View>
-        </View>
-      )}
-
-      {mediaNotice ? <Text style={styles.warn}>{mediaNotice}</Text> : null}
-      {accessoryNotice ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={accessoryNotice}
-          accessibilityHint="Opens Accessories"
-          onPress={() => openSessionSheet('accessories')}
-          style={styles.accessoryNotice}
-        >
-          <Text style={styles.accessoryNoticeText} numberOfLines={1}>
-            {accessoryNotice}
-          </Text>
-          <Text style={styles.accessoryNoticeChevron}>›</Text>
-        </Pressable>
-      ) : null}
-      {store.overBudget ? (
-        <Text style={styles.warn}>Too many incoming streams — some feeds paused.</Text>
-      ) : null}
-      {store.error ? <Text style={styles.error}>{store.error}</Text> : null}
-
-      <View
-        style={[
-          styles.body,
-          replyBeside && styles.bodyLandscape,
-          replyBeside && store.leftHanded && styles.bodyLandscapeLeft,
-        ]}
-      >
-        <View
-          style={styles.list}
-          onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
-        >
-          {grid.map((row, rowIndex) => (
-            <View key={`row-${rowIndex}`} style={[styles.gridRow, { height: layout.cardHeight, gap: layout.gap }]}>
-              {row.map((target) => (
-                <View key={`${target.type}-${target.id}`} style={styles.gridCell}>
-                  <TargetRow
-                    target={target}
-                    compact={compact || replyBeside}
-                    volumeReadout={compact}
-                    height={layout.cardHeight}
-                    edgeTalkAffordance={!replyBeside && store.edgeTalkAffordance}
-                    onOpenConferenceMembers={setConferenceTarget}
-                  />
-                </View>
-              ))}
-              {row.length < layout.columns
-                ? Array.from({ length: layout.columns - row.length }, (_, index) => (
-                    <View key={`pad-${rowIndex}-${index}`} style={styles.gridCell} />
-                  ))
-                : null}
+        ) : (
+          <View
+            style={[styles.header, compact && styles.headerCompact]}
+            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Session, ${connection.label}`}
+              accessibilityHint="Server, layout, audio, accessories, debug, profiles, and disconnect"
+              onPress={() => openSessionSheet()}
+              style={styles.identity}
+            >
+              <View style={styles.nameRow}>
+                <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
+                  {store.identity?.name ?? 'talktome'}
+                </Text>
+                <ConnectionStatusBadge health={connection} compact={compact} />
+              </View>
+              {productionLabel ? (
+                <Text style={styles.production} numberOfLines={1}>
+                  {productionLabel}
+                </Text>
+              ) : null}
+              {tallyLabel && tallyColor ? (
+                <Text
+                  accessibilityLabel={tallyLabel === 'PGM' ? 'On program' : 'On preview'}
+                  style={[styles.tallyChip, { color: tallyColor }]}
+                >
+                  {tallyLabel}
+                </Text>
+              ) : null}
+            </Pressable>
+            <View style={styles.headerActions}>
+              {offerCollapse ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Hide top bar"
+                  accessibilityHint="Gives the target cards more room on small screens"
+                  onPress={collapseHeader}
+                  style={[styles.collapseButton, compact && styles.collapseButtonCompact]}
+                >
+                  <ChevronIcon color={colors.text} direction="up" />
+                </Pressable>
+              ) : null}
+              <AudioRouteButton onPress={() => setAudioMenuOpen(true)} />
+              {layerButton}
             </View>
-          ))}
-        </View>
-        {replyButton}
-      </View>
+          </View>
+        )}
 
-      <ConferenceMembersModal target={conferenceTarget} onClose={() => setConferenceTarget(null)} />
+        {mediaNotice ? <Text style={styles.warn}>{mediaNotice}</Text> : null}
+        {accessoryNotice ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={accessoryNotice}
+            accessibilityHint="Opens Accessories"
+            onPress={() => openSessionSheet('accessories')}
+            style={styles.accessoryNotice}
+          >
+            <Text style={styles.accessoryNoticeText} numberOfLines={1}>
+              {accessoryNotice}
+            </Text>
+            <Text style={styles.accessoryNoticeChevron}>›</Text>
+          </Pressable>
+        ) : null}
+        {store.overBudget ? (
+          <Text style={styles.warn}>Too many incoming streams — some feeds paused.</Text>
+        ) : null}
+        {store.error ? <Text style={styles.error}>{store.error}</Text> : null}
+
+        <View
+          style={[
+            styles.body,
+            replyBeside && styles.bodyLandscape,
+            replyBeside && store.leftHanded && styles.bodyLandscapeLeft,
+          ]}
+        >
+          <View
+            style={styles.list}
+            onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
+          >
+            {grid.map((row, rowIndex) => (
+              <View key={`row-${rowIndex}`} style={[styles.gridRow, { height: layout.cardHeight, gap: layout.gap }]}>
+                {row.map((target) => (
+                  <View key={`${target.type}-${target.id}`} style={styles.gridCell}>
+                    <TargetRow
+                      target={target}
+                      compact={compact || replyBeside}
+                      volumeReadout={compact}
+                      height={layout.cardHeight}
+                      edgeTalkAffordance={!replyBeside && store.edgeTalkAffordance}
+                      onOpenConferenceMembers={setConferenceTarget}
+                    />
+                  </View>
+                ))}
+                {row.length < layout.columns
+                  ? Array.from({ length: layout.columns - row.length }, (_, index) => (
+                      <View key={`pad-${rowIndex}-${index}`} style={styles.gridCell} />
+                    ))
+                  : null}
+              </View>
+            ))}
+          </View>
+          {replyButton}
+        </View>
+
+        <ConferenceMembersModal target={conferenceTarget} onClose={() => setConferenceTarget(null)} />
+      </View>
+      {audioMenuOpen ? <AudioRouteMenu onClose={() => setAudioMenuOpen(false)} /> : null}
     </View>
   );
 }

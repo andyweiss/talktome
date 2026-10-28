@@ -19,6 +19,7 @@ final class TalkToMeAudioSessionController {
     get { routePreference.preferredId }
     set { routePreference.preferredId = newValue }
   }
+  private var routeSelectionDeadline: TimeInterval = 0
   private var cuePlayer: AVAudioPlayer?
   var onRouteChange: (() -> Void)?
 
@@ -134,9 +135,16 @@ final class TalkToMeAudioSessionController {
   }
 
   func selectRoute(_ id: String) throws {
+    let previous = preferredRouteId
     setPreferredRouteId(id)
-    let session = AVAudioSession.sharedInstance()
-    try applyPreferredRoute(session)
+    routeSelectionDeadline = Date.timeIntervalSinceReferenceDate + 2
+    do {
+      try applyPreferredRoute(AVAudioSession.sharedInstance())
+    } catch {
+      preferredRouteId = previous
+      routeSelectionDeadline = 0
+      throw error
+    }
     onRouteChange?()
   }
 
@@ -231,6 +239,12 @@ final class TalkToMeAudioSessionController {
   private func applyPreferredRoute(_ session: AVAudioSession) throws {
     guard !routePreference.isPickerPresented else { return }
     if preferredRouteId == "receiver" {
+      // Clearing the speaker override alone still selects the speaker when
+      // defaultToSpeaker is set. The receiver needs the category default too.
+      if session.categoryOptions.contains(.defaultToSpeaker) {
+        try session.setCategory(session.category, mode: session.mode,
+                                options: session.categoryOptions.subtracting(.defaultToSpeaker))
+      }
       try preferBuiltInMicrophone(session)
       if !session.currentRoute.outputs.contains(where: { $0.portType == .builtInReceiver }) {
         try session.overrideOutputAudioPort(.none)
@@ -269,8 +283,10 @@ final class TalkToMeAudioSessionController {
   private func listedRoutes(_ session: AVAudioSession, currentId: String) -> [[String: Any]] {
     var routes: [[String: Any]] = [
       routeEntry(id: "speaker", label: "Speaker", kind: "speaker", selected: currentId == "speaker"),
-      routeEntry(id: "receiver", label: "iPhone", kind: "receiver", selected: currentId == "receiver"),
     ]
+    if UIDevice.current.userInterfaceIdiom == .phone {
+      routes.append(routeEntry(id: "receiver", label: "iPhone", kind: "receiver", selected: currentId == "receiver"))
+    }
     for input in session.availableInputs ?? [] {
       guard let kind = routeKind(for: input.portType), kind != "other" else {
         continue
@@ -415,7 +431,8 @@ final class TalkToMeAudioSessionController {
         let shouldRestore = routePreference.routeDidChange(
           reason: TalkToMeAudioRoutePreference.ChangeReason(rawValue: reason.rawValue) ?? .other,
           currentId: resolved,
-          preferredStillAvailable: preferredStillAvailable
+          preferredStillAvailable: preferredStillAvailable,
+          selectionInProgress: Date.timeIntervalSinceReferenceDate < routeSelectionDeadline
         )
         if shouldRestore {
           try? applyPreferredRoute(session)

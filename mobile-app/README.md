@@ -70,8 +70,8 @@ open ios/TalkToMe.xcworkspace
 The helper backs up the existing native project under `.expo/ios-backups/`,
 generates a fresh project and configures Release execution without Metro.
 `ios.local.json` is ignored and used only with `TALKTOME_IOS_LOCAL=1`.
-Local mode also enables scene-based startup; other builds can opt in using
-`TALKTOME_IOS_SCENES=1`. Run `pod install` in `ios/` after native dependency
+All iOS builds use scene-based startup, including compatibility with the iOS 27 SDK.
+Run `pod install` in `ios/` after native dependency
 changes, or regenerate after config-plugin changes.
 
 ## CI and releases

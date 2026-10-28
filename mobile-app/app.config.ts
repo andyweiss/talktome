@@ -101,9 +101,7 @@ const config: ExpoConfig = {
     './plugins/withTalkToMeOrientation',
     './plugins/withTalkToMePresence',
     './plugins/withTalkToMeXcodeWarnings',
-    ...(iosSigning.local || process.env.TALKTOME_IOS_SCENES === '1'
-      ? ['./plugins/withTalkToMeScenes']
-      : []),
+    './plugins/withTalkToMeScenes',
     [
       'expo-splash-screen',
       {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import config from '../../app.config';
 
 const { migrateAppDelegate, sceneManifest } = require('../../plugins/withTalkToMeScenes');
 
@@ -15,7 +16,11 @@ const startup = `class AppDelegate: ExpoAppDelegate {
 }
 `;
 
-describe('opt-in iOS scene startup', () => {
+describe('iOS scene startup', () => {
+  it('enables scene startup for standard production configuration', () => {
+    expect(config.plugins).toContain('./plugins/withTalkToMeScenes');
+  });
+
   it('moves React startup into a scene window while preserving other plugin initialization', () => {
     const next = migrateAppDelegate(startup);
     expect(next).not.toContain('UIWindow(frame: UIScreen.main.bounds)');

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActionSheetIOS,
+  ActivityIndicator,
+  ScrollView,
   Modal,
   Platform,
   Pressable,
@@ -8,106 +9,89 @@ import {
   Text,
   View,
 } from 'react-native';
-import { describeAudioRouteKind, hasSystemRoutePicker, type AudioRouteKind } from '../audio/routes';
+import { describeAudioRouteKind, type AudioRouteKind } from '../audio/routes';
 import { session, useSessionStore } from '../session/store';
 import { HeadphonesIcon, PhoneIcon, SpeakerIcon } from './icons';
 import { colors } from './theme';
-import { IosSystemRoutePicker, iosSystemRoutePickerAvailable } from './IosSystemRoutePicker';
 
-export function AudioRouteButton() {
+/** The menu stays in the operator view: no system presentation or status-bar handoff. */
+export function AudioRouteButton({ onPress }: { onPress: () => void }) {
   const routes = useSessionStore((state) => state.audioRoutes);
   const selected = routes.find((route) => route.selected) ?? routes[0];
-  const [open, setOpen] = useState(false);
-  const systemPicker = iosSystemRoutePickerAvailable && hasSystemRoutePicker();
-
-  useEffect(() => {
-    session.refreshAudioDevices();
-  }, []);
-
   const kind = selected?.kind ?? 'speaker';
-  const label = selected ? describeAudioRouteKind(kind) : 'Speaker';
-  const listed =
-    routes.length > 0 ? routes : [{ id: 'speaker', label: 'Speaker', kind: 'speaker' as const }];
-
-  const openFallbackPicker = () => {
-    session.refreshAudioDevices();
-    if (Platform.OS === 'ios') {
-      const options = [...listed.map((route) => route.label), 'Cancel'];
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: 'Play audio on',
-          options,
-          cancelButtonIndex: options.length - 1,
-          userInterfaceStyle: 'dark',
-        },
-        (index) => {
-          const route = listed[index];
-          if (route) {
-            void session.selectAudioDevice(route.id);
-          }
-        },
-      );
-      return;
-    }
-    setOpen(true);
-  };
-
   return (
-    <>
-      <View
-        collapsable={false}
-        style={styles.button}
-        accessibilityElementsHidden={systemPicker}
-        importantForAccessibility={systemPicker ? 'no-hide-descendants' : 'yes'}
-      >
-        <View pointerEvents="none">
-          <RouteKindIcon kind={kind} />
-        </View>
-        {systemPicker ? (
-          <IosSystemRoutePicker />
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Audio output ${label}`}
-            accessibilityHint="Choose speaker, phone, or headset"
-            onPress={openFallbackPicker}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-      </View>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={styles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} />
-          <View style={styles.sheet}>
-            <Text style={styles.title}>Play audio on</Text>
-            {listed.map((route) => {
-              const active = route.selected || route.id === selected?.id;
-              return (
-                <Pressable
-                  key={route.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => {
-                    void session.selectAudioDevice(route.id);
-                    setOpen(false);
-                  }}
-                  style={[styles.row, active && styles.rowSelected]}
-                >
-                  <RouteKindIcon kind={route.kind} />
-                  <Text style={styles.rowLabel} numberOfLines={1}>
-                    {route.label}
-                  </Text>
-                  {active ? <Text style={styles.rowValue}>Selected</Text> : null}
-                </Pressable>
-              );
-            })}
-            <Pressable accessibilityRole="button" onPress={() => setOpen(false)} style={styles.done}>
-              <Text style={styles.doneText}>Done</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Audio output ${describeAudioRouteKind(kind)}`}
+      accessibilityHint="Choose speaker, phone, or headset"
+      onPress={onPress}
+      style={styles.button}
+    >
+      <RouteKindIcon kind={kind} />
+    </Pressable>
+  );
+}
+
+export function AudioRouteMenu({ onClose }: { onClose: () => void }) {
+  const routes = useSessionStore((state) => state.audioRoutes);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    session.refreshAudioDevices();
+    return () => { mounted.current = false; };
+  }, []);
+  const select = async (id: string) => {
+    setPending(id);
+    setError(null);
+    try {
+      await session.selectAudioDevice(id);
+      if (mounted.current) onClose();
+    } catch (cause) {
+      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Could not change audio output.');
+    } finally {
+      if (mounted.current) setPending(null);
+    }
+  };
+  // Native snapshots list stable speaker/phone/headset identities, independent
+  // of the system media picker merging and reordering its presentation routes.
+  const content = (
+    <View style={styles.backdrop} accessibilityViewIsModal>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Close audio output"
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+      />
+      <View style={styles.sheet}>
+        <Text accessibilityRole="header" style={styles.title}>Play audio on</Text>
+        <ScrollView style={styles.routeList}>
+          {routes.map((route) => (
+            <Pressable
+              key={route.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: route.selected, disabled: pending !== null, busy: pending === route.id }}
+              disabled={pending !== null}
+              onPress={() => void select(route.id)}
+              style={[styles.row, route.selected && styles.rowSelected]}
+            >
+              <RouteKindIcon kind={route.kind} />
+              <Text style={styles.rowLabel} numberOfLines={2}>{route.label}</Text>
+              {pending === route.id ? <ActivityIndicator color={colors.accent} /> :
+                route.selected ? <Text style={styles.rowValue}>Selected</Text> : null}
             </Pressable>
-          </View>
-        </View>
-      </Modal>
-    </>
+          ))}
+        </ScrollView>
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+        <Pressable accessibilityRole="button" onPress={onClose} style={styles.done}>
+          <Text style={styles.doneText}>Done</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+  return Platform.OS === 'ios' ? content : (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>{content}</Modal>
   );
 }
 
@@ -132,12 +116,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
+    zIndex: 10,
     backgroundColor: 'rgba(2, 6, 23, 0.72)',
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
+  routeList: { maxHeight: '75%' },
+  error: { color: colors.danger, paddingHorizontal: 16, paddingTop: 12 },
   sheet: {
+    maxHeight: '85%',
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     borderRadius: 16,
     backgroundColor: '#121826',
     borderWidth: 1,

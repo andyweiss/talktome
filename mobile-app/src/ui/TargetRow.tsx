@@ -172,7 +172,7 @@ export function TargetRow({
       style={[...talkSlotStyle, styles.feedButton, dimmed && styles.controlOffline]}
     >
       {feedStopped ? (
-        <PlayIcon color={feedOnline ? 'rgba(248,113,113,0.95)' : WEB_AVATAR.offlineGlyph} />
+        <PlayIcon color={feedOnline ? colors.text : WEB_AVATAR.offlineGlyph} size={18} />
       ) : (
         <StopIcon color={colors.text} />
       )}
