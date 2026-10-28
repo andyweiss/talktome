@@ -747,11 +747,6 @@ if (process.pkg) {
 
 app.use(express.static(publicDir));
 
-const nodeModulesDir = path.join(projectRoot, "node_modules");
-if (fs.existsSync(nodeModulesDir)) {
-  app.use("/node_modules", express.static(nodeModulesDir));
-}
-
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const BROWSER_SESSION_COOKIE = "talktome_session";
 const BROWSER_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
@@ -2869,7 +2864,7 @@ app.get('/conferences/:id/users', requireAdmin, (req, res) => {
     const users = getProductionUsersForConference(confId, productionId);
     res.json(users);
   } catch (err) {
-    console.error(`[ERROR] fetching users for conference ${confId}:`, err);
+    console.error("[ERROR] fetching users for conference %s:", confId, err);
     res.status(err?.statusCode || 500).json({ error: err.message });
   }
 });
@@ -6508,13 +6503,16 @@ app.post("/cut-camera", (req, res) => {
 
 
 app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url}`);
+  console.log("[REQ] %s %s", req.method, req.path);
   next();
 });
 
 function normalizeHostname(value) {
   if (!value) return null;
-  const trimmed = String(value).trim().toLowerCase().replace(/\.+$/, "");
+  const input = String(value).trim().toLowerCase();
+  let end = input.length;
+  while (end > 0 && input.charCodeAt(end - 1) === 46) end -= 1;
+  const trimmed = input.slice(0, end);
   if (!trimmed) return null;
   return trimmed.endsWith(".local") ? trimmed : `${trimmed}.local`;
 }
@@ -8553,7 +8551,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("produce-plain", async ({ kind = "audio", appData, rtpParameters } = {}, callback = () => {}) => {
-    console.log(`[GATEWAY] Client ${socket.id} wants to produce plain ${kind}`, appData);
+    console.log("[GATEWAY] Client %s wants to produce plain %s", socket.id, kind, appData);
     try {
       const peer = peers.get(socket.id);
       if (!peer) {
@@ -8730,7 +8728,9 @@ io.on("connection", (socket) => {
       "produce",
       async ({ kind, rtpParameters, appData }, callback) => {
         console.log(
-            `[PRODUCE] Client ${socket.id} wants to produce ${kind}`,
+            "[PRODUCE] Client %s wants to produce %s",
+            socket.id,
+            kind,
             appData
         );
 
