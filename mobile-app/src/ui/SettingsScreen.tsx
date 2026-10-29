@@ -612,9 +612,13 @@ function AudioSettingsPage({ onDimSliding }: { onDimSliding: (active: boolean) =
 
       <SettingsSection title="Microphone and speaker">
         {Platform.OS === 'ios' && iosSystemRoutePickerAvailable ? (
-          <View collapsable={false}>
-            <SettingsRow label="Audio output" value={store.audioOutputLabel} />
-            <IosSystemRoutePicker />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <SettingsRow label="Audio output" value={store.audioOutputLabel} />
+            </View>
+            <View collapsable={false} style={{ width: 48, height: 48, marginRight: 10 }}>
+              <IosSystemRoutePicker />
+            </View>
           </View>
         ) : store.audioRoutes.map((route) => (
           <SettingsRow

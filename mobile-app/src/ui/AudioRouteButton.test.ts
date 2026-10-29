@@ -18,7 +18,7 @@ describe('operator audio output control', () => {
   it('opens the native iOS route picker, keeping the app menu out of the path', () => {
     const callback = vi.fn(), button = AudioRouteButton({ onPress: callback });
     expect(button.type).toBe('View');
-    expect(button.props.children[1].type).toBe(IosSystemRoutePicker);
+    expect(button.props.children.type).toBe(IosSystemRoutePicker);
     expect(button.props.accessibilityElementsHidden).not.toBe(true);
     expect(callback).not.toHaveBeenCalled();
   });

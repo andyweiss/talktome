@@ -23,9 +23,6 @@ export function AudioRouteButton({ onPress }: { onPress: () => void }) {
   if (Platform.OS === 'ios' && iosSystemRoutePickerAvailable) {
     return (
       <View collapsable={false} style={styles.button}>
-        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <RouteKindIcon kind={kind} />
-        </View>
         <IosSystemRoutePicker />
       </View>
     );

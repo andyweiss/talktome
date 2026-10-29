@@ -12,6 +12,7 @@ final class WatchRemoteSession: NSObject, ObservableObject {
 
   private var awaitingConfirmKey: String?
   private var requestId: String?
+  private var readyTimeout: DispatchWorkItem?
   private var lockTimeout: DispatchWorkItem?
   private var awaitingLock = false
 
@@ -38,12 +39,25 @@ final class WatchRemoteSession: NSObject, ObservableObject {
     awaitingConfirmKey = target.key
     requestId = UUID().uuidString
     send(type: "talk-start", target: target, failClearsHold: true)
+    let timeout = DispatchWorkItem { [weak self] in
+      guard let self, self.awaitingConfirmKey == target.key else { return }
+      self.stopTalk(target)
+      self.status = "iPhone did not confirm readiness"
+    }
+    readyTimeout = timeout
+    DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
   }
 
   func lockTalk(_ target: WatchRemoteTarget) {
     guard holdingKey == target.key, lockedKey == nil, reachable else { return }
     lockedKey = target.key
     awaitingLock = true
+    // The first microphone start may take several seconds. Confirm readiness
+    // before starting the separate lock acknowledgment deadline.
+    if awaitingConfirmKey == nil { sendLock(target) }
+  }
+
+  private func sendLock(_ target: WatchRemoteTarget) {
     send(type: "talk-lock", target: target, failClearsHold: true)
     let timeout = DispatchWorkItem { [weak self] in
       guard let self, self.awaitingLock else { return }
@@ -51,7 +65,7 @@ final class WatchRemoteSession: NSObject, ObservableObject {
       self.status = "Lock was not confirmed by iPhone"
     }
     lockTimeout = timeout
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: timeout)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
   }
 
   func endTalk(_ target: WatchRemoteTarget) {
@@ -74,6 +88,8 @@ final class WatchRemoteSession: NSObject, ObservableObject {
     requestId = nil
     awaitingConfirmKey = nil
     awaitingLock = false
+    readyTimeout?.cancel()
+    readyTimeout = nil
     lockTimeout?.cancel()
     lockTimeout = nil
   }
@@ -147,8 +163,10 @@ final class WatchRemoteSession: NSObject, ObservableObject {
   private func confirmTalk(_ message: [String: Any]) {
     guard matchesRequest(message), awaitingConfirmKey == holdingKey, holdingKey != nil else { return }
     awaitingConfirmKey = nil
+    readyTimeout?.cancel()
     if boolValue(message["talking"]) {
       WatchTalkBeep.playConfirmed(soundOnWatch: !boolValue(message["readyCueOnPhone"]))
+      if awaitingLock, let target = holdingTarget { sendLock(target) }
     } else {
       if let target = holdingTarget { stopTalk(target) }
       fail("Could not talk to this target", clearHold: true)
