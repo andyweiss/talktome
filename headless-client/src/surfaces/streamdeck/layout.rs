@@ -72,6 +72,9 @@ pub mod palette {
     pub const STATUS_BAD: Rgb = Rgb(245, 158, 11);
     /// Web client program tally (`#e00000`).
     pub const ON_AIR: Rgb = Rgb(224, 0, 0);
+    /// Reply key while the microphone is live; a deeper red than ON AIR so
+    /// the two do not read as the same signal.
+    pub const MIC_ON: Rgb = Rgb(185, 28, 28);
     /// Web client preview tally (`#00875a`).
     pub const PREVIEW: Rgb = Rgb(0, 135, 90);
     pub const WHITE: Rgb = Rgb(255, 255, 255);
@@ -204,6 +207,11 @@ pub enum EncoderBinding<'a> {
         conference: TargetKey,
         member: &'a ConferenceMemberInfo,
     },
+}
+
+/// Stream Deck + and + XL: the dials sit under an LCD touch strip.
+fn has_touch_strip(geometry: &Geometry) -> bool {
+    geometry.encoders > 0
 }
 
 /// Decks whose command row still has a spare cell after Status, VOL, Reply
@@ -744,9 +752,12 @@ fn command_roles(
         } else if key_pages > 1 && cursor == 1 {
             row[1] = Some(Role::NextPage);
         }
-        if encoder_pages > 1 && cursor > 1 {
+        // Decks with dials have a touch strip: a swipe pages the dials, so a
+        // DIALS key would only take a command cell.
+        let dial_key = encoder_pages > 1 && !has_touch_strip(geometry);
+        if dial_key && cursor > 1 {
             row[cursor] = Some(Role::NextEncoderPage);
-        } else if encoder_pages > 1 && cursor == 1 && row[1] != Some(Role::NextPage) {
+        } else if dial_key && cursor == 1 && row[1] != Some(Role::NextPage) {
             row[1] = Some(Role::NextEncoderPage);
         }
         if has_members_command_key(geometry) {
@@ -1037,7 +1048,31 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
     {
         appearance.blink = Some(palette::CONTROL);
     }
+    if snapshot.talking {
+        mic_on_appearance(&mut appearance, snapshot);
+    }
     appearance
+}
+
+/// The microphone is live, whatever opened it (a key, GPIO, VOX, a lock or
+/// the remote panel): Reply turns red, says MIC ON and names the targets.
+fn mic_on_appearance(appearance: &mut Appearance, snapshot: &Snapshot) {
+    let talking_to: Vec<&str> = snapshot
+        .targets
+        .iter()
+        .filter(|target| target.held || target.locked)
+        .map(|target| target.name.as_str())
+        .collect();
+    appearance.title = "MIC ON".into();
+    appearance.subtitle = match talking_to.as_slice() {
+        [] => String::new(),
+        [name] => (*name).to_string(),
+        many => format!("{} targets", many.len()),
+    };
+    appearance.footer = String::new();
+    appearance.background = palette::MIC_ON;
+    appearance.foreground = palette::WHITE;
+    appearance.blink = None;
 }
 
 /// Web client colours: purple while we talk, green for incoming audio.
@@ -2172,7 +2207,9 @@ mod tests {
         assert_eq!(keys[0].role, Role::Status);
         assert_eq!(keys[1].role, Role::VolumeToggle);
         assert_eq!(keys[8].role, Role::Reply);
-        assert!(keys.iter().any(|key| key.role == Role::NextEncoderPage));
+        // Dial pages exist, but the strip swipe pages them: no DIALS key.
+        assert_eq!(encoder_page_count(&geometry, 20), 4);
+        assert!(!keys.iter().any(|key| key.role == Role::NextEncoderPage));
         assert!(!keys.iter().any(|key| key.role == Role::NextPage));
         assert_eq!(keys[9].role, Role::Target(TargetKey::User(0)));
         assert_eq!(keys[17].role, Role::Target(TargetKey::Feed(8)));
@@ -2187,6 +2224,45 @@ mod tests {
         assert_eq!(binding_target(encoders[1]), Some(TargetKey::User(19)));
         assert_eq!(encoders[2], None);
         assert_eq!(encoder_page_count(&geometry, 20), 4);
+    }
+
+    #[test]
+    fn reply_turns_red_mic_on_while_talking() {
+        let mut snapshot = snapshot(3);
+        let reply_key = |snapshot: &Snapshot| {
+            layout(
+                &geometry("mk2"),
+                snapshot,
+                &DeckState::default(),
+                &options(),
+            )
+            .into_iter()
+            .find(|key| key.role == Role::Reply)
+            .unwrap()
+            .appearance
+        };
+        assert_eq!(reply_key(&snapshot).title, "REPLY");
+
+        // Talking to one target, e.g. from a GPIO button: red, MIC ON, its name.
+        snapshot.talking = true;
+        snapshot.targets[0].held = true;
+        let reply = reply_key(&snapshot);
+        assert_eq!(reply.title, "MIC ON");
+        assert_eq!(reply.subtitle, "T0");
+        assert_eq!(reply.background, palette::MIC_ON);
+        assert_eq!(reply.blink, None);
+
+        // A lock plus a held key: the count instead of a name.
+        snapshot.targets[1].locked = true;
+        assert_eq!(reply_key(&snapshot).subtitle, "2 targets");
+
+        // Mic off again: back to REPLY.
+        snapshot.talking = false;
+        snapshot.targets[0].held = false;
+        snapshot.targets[1].locked = false;
+        let reply = reply_key(&snapshot);
+        assert_eq!(reply.title, "REPLY");
+        assert_ne!(reply.background, palette::MIC_ON);
     }
 
     #[test]
@@ -2384,7 +2460,7 @@ mod tests {
             &options(),
         );
         assert_eq!(plusxl[2].role, Role::MembersToggle);
-        assert!(plusxl.iter().any(|key| key.role == Role::NextEncoderPage));
+        assert!(!plusxl.iter().any(|key| key.role == Role::NextEncoderPage));
     }
 
     #[test]

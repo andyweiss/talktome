@@ -96,6 +96,34 @@ pub enum AudioProfile {
     Standard,
 }
 
+/// `audio.network`: defaults for the jitter buffer and the send profile.
+/// Values set explicitly in the file always win over the preset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NetworkPreset {
+    /// Wired or good Wi-Fi: lowest delay.
+    #[default]
+    Lan,
+    /// This client sits on a mobile network: a deeper buffer from the first
+    /// packet and 20 ms frames with FEC on the way out.
+    Mobile,
+}
+
+impl NetworkPreset {
+    /// (key, value) pairs the preset fills in when the file leaves them out.
+    fn defaults(self) -> &'static [(&'static str, &'static str)] {
+        match self {
+            NetworkPreset::Lan => &[],
+            NetworkPreset::Mobile => &[
+                ("jitter_start_ms", "150"),
+                ("jitter_min_ms", "60"),
+                ("jitter_max_ms", "600"),
+                ("profile", "standard"),
+            ],
+        }
+    }
+}
+
 impl AudioProfile {
     pub fn frame_ms(self) -> u32 {
         match self {
@@ -149,6 +177,11 @@ pub struct AudioConfig {
     /// in `user-audio-settings-updated` overrides this until restart.
     #[serde(default = "default_play_connection_sounds")]
     pub play_connection_sounds: bool,
+    /// `lan` (default) or `mobile`; see [`NetworkPreset`].
+    pub network: NetworkPreset,
+    /// Playout depth each new stream starts at. It only drops toward
+    /// `jitter_min_ms` once 10 s of arrivals show the link is calmer.
+    pub jitter_start_ms: u32,
     pub jitter_min_ms: u32,
     pub jitter_max_ms: u32,
     pub reopen_ms: u64,
@@ -492,6 +525,8 @@ impl Default for AudioConfig {
             dim_feeds_while_speaking: false,
             dim_when_addressed: true,
             play_connection_sounds: default_play_connection_sounds(),
+            network: NetworkPreset::Lan,
+            jitter_start_ms: 20,
             jitter_min_ms: 20,
             jitter_max_ms: 400,
             reopen_ms: 2000,
@@ -555,6 +590,7 @@ fn json_number_as_f32(value: &Value) -> Option<f32> {
 /// In-place upgrades for older configuration documents (dim −14 → −15,
 /// empty `talk.main_target` → null).
 pub fn migrate_document(doc: &mut Value) {
+    apply_network_preset(doc);
     if let Some(audio) = doc.get_mut("audio") {
         if let Some(dim) = audio.get("dim_db") {
             if json_number_as_f32(dim).is_some_and(|value| (value - LEGACY_DIM_DB).abs() < 1e-3) {
@@ -874,6 +910,29 @@ pub fn load_from_env() -> Result<LoadedConfig> {
     Ok(LoadedConfig { config, path: None })
 }
 
+/// Fills the `audio.network` preset's values into keys the file leaves out.
+fn apply_network_preset(doc: &mut Value) {
+    let Some(audio) = doc.get_mut("audio").and_then(Value::as_object_mut) else {
+        return;
+    };
+    let Some(preset) = audio
+        .get("network")
+        .cloned()
+        .and_then(|value| serde_json::from_value::<NetworkPreset>(value).ok())
+    else {
+        return;
+    };
+    for (key, value) in preset.defaults() {
+        if !audio.contains_key(*key) {
+            let value = value
+                .parse::<u64>()
+                .map(Value::from)
+                .unwrap_or_else(|_| Value::from(*value));
+            audio.insert((*key).to_string(), value);
+        }
+    }
+}
+
 pub fn from_document(mut doc: Value) -> Result<Config> {
     migrate_document(&mut doc);
     serde_json::from_value(doc).map_err(|e| anyhow!("invalid configuration: {e}"))
@@ -1094,6 +1153,13 @@ impl Config {
         }
         if self.audio.jitter_min_ms > self.audio.jitter_max_ms {
             bail!("audio.jitter_min_ms must not exceed audio.jitter_max_ms");
+        }
+        if !(self.audio.jitter_min_ms..=self.audio.jitter_max_ms)
+            .contains(&self.audio.jitter_start_ms)
+        {
+            bail!(
+                "audio.jitter_start_ms must be between audio.jitter_min_ms and audio.jitter_max_ms"
+            );
         }
         if self.audio.device_period_ms != 0 && !(2..=40).contains(&self.audio.device_period_ms) {
             bail!("audio.device_period_ms must be 0 (driver default) or between 2 and 40");
@@ -1359,6 +1425,31 @@ mod tests {
         );
         let legacy = StreamDeckConfig::default();
         assert_eq!(legacy.volume_step_db(), 3.0);
+    }
+
+    #[test]
+    fn mobile_network_preset_fills_only_missing_values() {
+        let mut doc = minimal_json();
+        doc["audio"] = serde_json::json!({ "network": "mobile", "jitter_max_ms": 800 });
+        let config = from_document(doc).unwrap();
+        config.validate().unwrap();
+        assert_eq!(config.audio.network, NetworkPreset::Mobile);
+        assert_eq!(config.audio.jitter_start_ms, 150);
+        assert_eq!(config.audio.jitter_min_ms, 60);
+        assert_eq!(config.audio.jitter_max_ms, 800, "explicit value wins");
+        assert_eq!(config.audio.profile, AudioProfile::Standard);
+
+        let lan = from_document(minimal_json()).unwrap();
+        assert_eq!(lan.audio.network, NetworkPreset::Lan);
+        assert_eq!(lan.audio.jitter_start_ms, 20);
+        assert_eq!(lan.audio.profile, AudioProfile::UltraLow);
+    }
+
+    #[test]
+    fn jitter_start_must_sit_between_min_and_max() {
+        let mut doc = minimal_json();
+        doc["audio"] = serde_json::json!({ "jitter_min_ms": 40, "jitter_start_ms": 20 });
+        assert!(from_document(doc).unwrap().validate().is_err());
     }
 
     #[test]

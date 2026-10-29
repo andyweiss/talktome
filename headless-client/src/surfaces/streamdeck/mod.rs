@@ -595,6 +595,28 @@ enum BoundEncoder {
     },
 }
 
+/// What a dial held past `MEMBER_HOLD` does.
+#[derive(Debug, PartialEq, Eq)]
+enum DialHold {
+    /// A conference dial opens that conference's member mix.
+    OpenMembers(TargetKey),
+    /// Any dial leaves the member mix again.
+    CloseMembers,
+    Nothing,
+}
+
+fn dial_hold_action(member_layer: bool, binding: Option<BoundEncoder>) -> DialHold {
+    if member_layer {
+        return DialHold::CloseMembers;
+    }
+    match binding {
+        Some(BoundEncoder::Target(target @ TargetKey::Conference(_))) => {
+            DialHold::OpenMembers(target)
+        }
+        _ => DialHold::Nothing,
+    }
+}
+
 fn bound_encoder(
     geometry: &Geometry,
     state: &DeckState,
@@ -743,12 +765,19 @@ async fn run_device(
                     .map(|(encoder, _)| *encoder)
                     .collect();
                 for encoder in due {
-                    if let Some(BoundEncoder::Target(target @ TargetKey::Conference(_))) =
-                        bound_encoder(&geometry, &state, &snapshot, encoder)
-                    {
-                        // Handled: the release that follows does nothing.
-                        pressed_encoders.remove(&encoder);
-                        relayout |= state.open_member_layer(&snapshot, Some(target));
+                    let binding = bound_encoder(&geometry, &state, &snapshot, encoder);
+                    match dial_hold_action(state.member_layer, binding) {
+                        DialHold::OpenMembers(target) => {
+                            // Handled: the release that follows does nothing.
+                            pressed_encoders.remove(&encoder);
+                            relayout |= state.open_member_layer(&snapshot, Some(target));
+                        }
+                        DialHold::CloseMembers => {
+                            pressed_encoders.remove(&encoder);
+                            state.close_member_layer();
+                            relayout = true;
+                        }
+                        DialHold::Nothing => {}
                     }
                 }
             }
@@ -1104,13 +1133,17 @@ async fn run_device(
                             user_id,
                             ..
                         }) => {
-                            let _ = bus
-                                .commands
-                                .send(Command::MemberMuteToggle {
-                                    conference,
-                                    user_id,
-                                })
-                                .await;
+                            // Like a conference dial: a release just short of
+                            // the hold that leaves the mix does not mute.
+                            if held < MUTE_HOLD {
+                                let _ = bus
+                                    .commands
+                                    .send(Command::MemberMuteToggle {
+                                        conference,
+                                        user_id,
+                                    })
+                                    .await;
+                            }
                             state.touch_member_layer();
                         }
                         Some(BoundEncoder::Target(target)) => {
@@ -1635,6 +1668,34 @@ async fn render_lcd(
 
 #[cfg(test)]
 mod tests {
+    use super::{
+        dial_hold_action, effective_key_size, kind_from_name, lcd_logical_size, local_ip_towards,
+        BoundEncoder, DialHold, Kind,
+    };
+    use crate::talk::TargetKey;
+
+    #[test]
+    fn holding_a_dial_opens_and_leaves_the_member_mix() {
+        let conference = TargetKey::Conference(2);
+        assert_eq!(
+            dial_hold_action(false, Some(BoundEncoder::Target(conference))),
+            DialHold::OpenMembers(conference)
+        );
+        assert_eq!(
+            dial_hold_action(false, Some(BoundEncoder::Target(TargetKey::User(3)))),
+            DialHold::Nothing
+        );
+        assert_eq!(dial_hold_action(false, None), DialHold::Nothing);
+        // In the member mix any dial, bound to a member or not, leaves it.
+        let member = BoundEncoder::Member {
+            conference,
+            user_id: 7,
+            volume: 1.0,
+        };
+        assert_eq!(dial_hold_action(true, Some(member)), DialHold::CloseMembers);
+        assert_eq!(dial_hold_action(true, None), DialHold::CloseMembers);
+    }
+
     #[tokio::test]
     async fn local_ip_uses_the_route_to_the_server() {
         assert_eq!(
@@ -1642,8 +1703,6 @@ mod tests {
             Some("127.0.0.1")
         );
     }
-
-    use super::{effective_key_size, kind_from_name, lcd_logical_size, local_ip_towards, Kind};
 
     #[test]
     fn plus_xl_uses_elgato_sizes_not_the_library_ones() {

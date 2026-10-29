@@ -30,14 +30,17 @@ pub async fn run(loaded: LoadedConfig) -> Result<RunOutcome> {
     let restart_requested = Arc::new(AtomicBool::new(false));
     spawn_signal_handler(shutdown_tx.clone());
 
-    let mixer = Arc::new(Mutex::new(Mixer::new(
-        config.audio.default_volume_linear(),
-        config.audio.dim_db,
-        config.audio.dim_feeds_while_speaking,
-        config.audio.dim_when_addressed,
-        config.audio.jitter_min_ms,
-        config.audio.jitter_max_ms,
-    )));
+    let mixer = Arc::new(Mutex::new(
+        Mixer::new(
+            config.audio.default_volume_linear(),
+            config.audio.dim_db,
+            config.audio.dim_feeds_while_speaking,
+            config.audio.dim_when_addressed,
+            config.audio.jitter_min_ms,
+            config.audio.jitter_max_ms,
+        )
+        .with_jitter_start(config.audio.jitter_start_ms),
+    ));
     let frame_samples =
         (crate::audio::codec::SAMPLE_RATE * config.audio.profile.frame_ms() / 1000) as usize;
     // Four frames is enough slack for the session loop to encode. A deeper

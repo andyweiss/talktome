@@ -66,6 +66,7 @@ pub struct Mixer {
     talking: bool,
     addressed: bool,
     jitter_min_ms: u32,
+    jitter_start_ms: u32,
     jitter_max_ms: u32,
     /// Output peak of the last render, for meters.
     pub output_peak: f32,
@@ -93,6 +94,7 @@ impl Mixer {
             talking: false,
             addressed: false,
             jitter_min_ms,
+            jitter_start_ms: jitter_min_ms,
             jitter_max_ms,
             output_peak: 0.0,
             cue: VecDeque::new(),
@@ -100,6 +102,12 @@ impl Mixer {
     }
 
     /// Replaces any cue still playing. The web client stops the previous tone.
+    /// Depth new streams start at (see `audio.jitter_start_ms`).
+    pub fn with_jitter_start(mut self, start_ms: u32) -> Self {
+        self.jitter_start_ms = start_ms;
+        self
+    }
+
     pub fn enqueue_cue(&mut self, samples: &[f32]) {
         self.cue.clear();
         self.cue.extend(samples.iter().copied());
@@ -120,7 +128,11 @@ impl Mixer {
             Source {
                 key,
                 speaker,
-                buffer: StreamBuffer::new(self.jitter_min_ms, self.jitter_max_ms)?,
+                buffer: StreamBuffer::with_start(
+                    self.jitter_min_ms,
+                    self.jitter_start_ms,
+                    self.jitter_max_ms,
+                )?,
             },
         );
         Ok(())

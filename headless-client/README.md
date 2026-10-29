@@ -226,7 +226,15 @@ mobile caller whose packets stall and then arrive in bursts gets the
 depth needed to play them without dropouts. Short gaps are filled with
 Opus concealment, and extra depth is removed gradually instead of by
 cutting audio. Configurations that still set `jitter_max_ms = 120` limit
-how far it can adapt. `audio.device_period_ms` (default 10) is the ALSA period; the
+how far it can adapt.
+
+When **this client** sits on a mobile network, set `audio.network =
+"mobile"` (Settings → Audio → Network). Every stream then starts at a
+150 ms buffer (`jitter_start_ms`) instead of learning the link first, may
+drop only to 60 ms once 10 s of arrivals look calm, and can grow to
+600 ms; the client sends 20 ms frames with FEC (`profile = "standard"`).
+The preset only fills values the file leaves out; the Settings switch
+writes all four, and each stays editable. `audio.device_period_ms` (default 10) is the ALSA period; the
 device buffer is two of those. `0` keeps the driver default, which on
 many cards is several times larger.
 
@@ -249,6 +257,9 @@ server-side mute. The conference fader still scales the whole conference.
   the left, **VOL** next to it, **NEXT** (when there are more targets than
   keys) one left of **Reply**, and **Reply** at the far right. Reply shows
   the conference (or target) being talked to, not the caller name.
+  While the microphone is live (any key, a GPIO input, VOX, a talk lock
+  or the remote panel), Reply turns red and reads **MIC ON** with the
+  target being talked to, or "N targets".
 - **Tap status to open the menu.** The deck switches to a page of its own:
   **CLEAR / locks** sits next to status in the top row, and **CHANGE
   PRODUCTION** and **INFO** (same colour as the MENU key) open another screen.
@@ -283,13 +294,13 @@ server-side mute. The conference fader still scales the whole conference.
   added on decks that still have a free command-row cell (MK.2, Original,
   XL, Plus XL). Neo / Mini / Plus open the layer with a **long-press on
   VOL**; Stream Deck + / + XL also open it with a **long-press on a
-  conference dial**. Target keys then show that conference's members
-  (select, MUTE/HEAR, − / +). The layer is exclusive with volume and uses
-  the same timeout.
+  conference dial** (1 s), and a long-press on any dial leaves it again.
+  Target keys then show that conference's members (select, MUTE/HEAR,
+  − / +). The layer is exclusive with volume and uses the same timeout.
 - Stream Deck +: the four dials control the same targets as the four keys
   above them (the bottom row of the current page). No separate dial paging.
-- Stream Deck + XL: six dials can be paged independently (**DIALS** on the
-  command row, or swipe the strip) so every target's volume can be adjusted.
+- Stream Deck + XL: six dials can be paged independently (swipe the touch
+  strip) so every target's volume can be adjusted.
   The web UI shows which target each dial currently controls.
 - Neo: the two touch points switch key pages.
 - Pedal: right = reply; left and middle are assignable (see **Pedal layout

@@ -1364,6 +1364,8 @@
         { path: 'audio.dim_feeds_while_speaking', label: 'Dim feeds while speaking', type: 'bool' },
         { path: 'audio.dim_when_addressed', label: 'Dim feeds when addressed', type: 'bool' },
         { path: 'audio.play_connection_sounds', label: 'Play connection sounds', type: 'bool', help: 'Disconnect and reconnect tones. Same as the web client. Admin can turn them off for this user after register. Restart to apply a change made here.' },
+        { path: 'audio.network', label: 'Network', type: 'select', options: [['lan', 'LAN / good Wi-Fi'], ['mobile', 'Mobile network']], help: 'Fills in the jitter buffer and codec profile for this client\u2019s link: LAN 20/20/400 ms and Ultra low; Mobile starts at 150 ms (60\u2013600 ms) and sends Standard (20 ms, FEC). The fields stay editable. Restart to apply.' },
+        { path: 'audio.jitter_start_ms', label: 'Jitter buffer start (ms)', type: 'number', help: 'Depth every new stream starts at. It only drops toward the minimum after 10 s of calm arrivals. Raise it when this client is on a bad link. Restart to apply.' },
         { path: 'audio.jitter_min_ms', label: 'Jitter buffer minimum (ms)', type: 'number', help: 'Lowest playout depth. The buffer follows the spread of packet delays over the last 10 s and never goes below this. Restart to apply.' },
         { path: 'audio.jitter_max_ms', label: 'Jitter buffer maximum (ms)', type: 'number', help: 'Ceiling for that adaptive depth. Mobile callers with bursty links need 300-400 ms. Restart to apply.' },
         { path: 'audio.reopen_ms', label: 'Device reopen interval (ms)', type: 'number' },
@@ -1565,6 +1567,12 @@
     }
   }
 
+  // Values the Network switch fills in (keep in step with NetworkPreset in config.rs).
+  const NETWORK_PRESETS = {
+    lan: { 'audio.jitter_start_ms': 20, 'audio.jitter_min_ms': 20, 'audio.jitter_max_ms': 400, 'audio.profile': 'ultra-low' },
+    mobile: { 'audio.jitter_start_ms': 150, 'audio.jitter_min_ms': 60, 'audio.jitter_max_ms': 600, 'audio.profile': 'standard' },
+  };
+
   function renderSettingsForm() {
     const form = $('#settings-form');
     form.replaceChildren();
@@ -1578,6 +1586,15 @@
       }
       details.append(fields);
       form.append(details);
+    }
+    const network = form.querySelector('select[data-path="audio.network"]');
+    if (network) {
+      network.addEventListener('change', () => {
+        for (const [path, value] of Object.entries(NETWORK_PRESETS[network.value] || {})) {
+          const input = form.querySelector(`[data-path="${path}"]:is(input, select)`);
+          if (input) input.value = String(value);
+        }
+      });
     }
   }
 

@@ -40,6 +40,10 @@ pub struct StreamBuffer {
     last_ext_seq: i64,
     frame_samples: usize,
     min_samples: usize,
+    /// Depth a new stream starts at and keeps for its first `DELAY_WINDOW_MS`.
+    start_samples: usize,
+    /// Arrival time of the first packet, to know when the start depth ends.
+    first_arrival_ms: Option<f64>,
     /// Current playout depth; follows the arrival delay spread.
     target_samples: usize,
     max_samples: usize,
@@ -67,10 +71,18 @@ pub struct StreamStats {
 }
 
 impl StreamBuffer {
+    #[cfg(test)]
     pub fn new(min_ms: u32, max_ms: u32) -> Result<Self> {
+        Self::with_start(min_ms, min_ms, max_ms)
+    }
+
+    /// Like `new`, but each stream starts at `start_ms` and only drops below
+    /// it once the first `DELAY_WINDOW_MS` of arrivals show a calmer link.
+    pub fn with_start(min_ms: u32, start_ms: u32, max_ms: u32) -> Result<Self> {
         let per_ms = SAMPLE_RATE as usize / 1000;
         let min_samples = per_ms * min_ms.max(1) as usize;
         let max_samples = per_ms * max_ms.max(min_ms.saturating_add(20)) as usize;
+        let start_samples = (per_ms * start_ms as usize).clamp(min_samples, max_samples);
         let now = Instant::now();
         Ok(Self {
             decoder: OpusDecoder::new()?,
@@ -79,7 +91,9 @@ impl StreamBuffer {
             last_ext_seq: 0,
             frame_samples: per_ms * 20,
             min_samples,
-            target_samples: min_samples,
+            start_samples,
+            first_arrival_ms: None,
+            target_samples: start_samples,
             max_samples,
             primed: false,
             concealing: 0,
@@ -165,9 +179,16 @@ impl StreamBuffer {
         Ok(())
     }
 
-    /// Raises the target to the arrival delay spread of the last
-    /// `DELAY_WINDOW_MS` plus one frame, within the configured bounds.
+    /// Sets the target to the arrival delay spread of the last
+    /// `DELAY_WINDOW_MS` plus one frame, within the configured bounds; for
+    /// the first window it does not go below the start depth.
     fn note_arrival(&mut self, now_ms: f64) {
+        let first = *self.first_arrival_ms.get_or_insert(now_ms);
+        let floor = if now_ms - first < DELAY_WINDOW_MS {
+            self.start_samples
+        } else {
+            self.min_samples
+        };
         let frame_ms = self.frame_samples as f64 * 1000.0 / SAMPLE_RATE as f64;
         let relative = now_ms - self.last_ext_seq as f64 * frame_ms;
         self.delays.push_back((now_ms, relative));
@@ -187,7 +208,7 @@ impl StreamBuffer {
         let spread = ((high - low).max(0.0) * SAMPLE_RATE as f64 / 1000.0) as usize;
         self.target_samples = spread
             .saturating_add(self.frame_samples)
-            .clamp(self.min_samples, self.max_samples);
+            .clamp(floor, self.max_samples);
     }
 
     fn append(&mut self, pcm: &[f32]) {
@@ -360,6 +381,25 @@ mod tests {
         }
         assert_eq!(buffer.stats.dropped_overflow, 0);
         assert!(buffer.target_ms() >= 200, "target {}", buffer.target_ms());
+    }
+
+    #[test]
+    fn start_depth_holds_for_the_first_window_then_relaxes() {
+        let mut buffer = StreamBuffer::with_start(20, 150, 600).unwrap();
+        assert_eq!(buffer.target_ms(), 150);
+        let packets = tone_packets(2);
+        // A perfectly calm link: the start depth still holds at first.
+        for seq in 0..600u16 {
+            let at = seq as f64 * 20.0;
+            buffer.push_at(seq, &packets[seq as usize % 2], at).unwrap();
+            if at < 9_000.0 {
+                assert_eq!(buffer.target_ms(), 150, "at {at} ms");
+            }
+            let mut out = vec![0f32; 960];
+            buffer.mix_into(&mut out, 1.0);
+        }
+        // After the first 10 s the calm link brings it down to the minimum.
+        assert_eq!(buffer.target_ms(), 20);
     }
 
     #[test]

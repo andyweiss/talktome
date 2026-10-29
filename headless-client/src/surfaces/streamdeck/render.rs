@@ -976,7 +976,7 @@ mod tests {
             visual: true,
         };
         let keys = layout(&plusxl, &snapshot, &DeckState::default(), &options);
-        assert!(keys.iter().any(|key| key.role == Role::NextEncoderPage));
+        assert!(!keys.iter().any(|key| key.role == Role::NextEncoderPage));
         assert_eq!(keys[2].role, Role::MembersToggle);
         assert_eq!(keys[8].role, Role::Reply);
         compose_grid(&renderer, &keys, plusxl.cols, 48)

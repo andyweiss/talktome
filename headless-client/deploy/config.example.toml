@@ -61,6 +61,11 @@ dim_when_addressed = true
 # Disconnect and reconnect tones. Same as the web client "Play connection sounds".
 # A live user-audio-settings-updated playConnectionSounds value overrides this.
 play_connection_sounds = true
+# Link of this client: "lan" (default) or "mobile". The preset fills the
+# jitter buffer and profile when they are left out; values set here win.
+# mobile = jitter_start_ms 150, jitter_min_ms 60, jitter_max_ms 600, profile "standard"
+network = "lan"
+jitter_start_ms = 20
 jitter_min_ms = 20
 jitter_max_ms = 400
 reopen_ms = 2000

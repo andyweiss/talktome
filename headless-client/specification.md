@@ -493,7 +493,10 @@ written to WAV by the second instance (289 packets for a 6 s tone; the first
 - **Decode**: per consumer, RTP → Opus decode with PLC/FEC → jitter buffer
   → mixer. The playout target is the spread of packet arrival delays over
   the last 10 s plus one frame, between `audio.jitter_min_ms` (20) and
-  `audio.jitter_max_ms` (400), so a link that stalls and then bursts
+  `audio.jitter_max_ms` (400); for its first 10 s a stream does not go
+  below `audio.jitter_start_ms` (20). `audio.network = "mobile"` fills
+  start/min/max with 150/60/600 ms and `profile = "standard"` where the
+  file leaves them out. So a link that stalls and then bursts
   (mobile networks) keeps the burst instead of losing it. A late packet is
   bridged with up to 100 ms of Opus concealment before the stream goes
   quiet and re-primes. Excess depth is shed gradually: quiet 2.5 ms
@@ -646,7 +649,10 @@ Every command is answered with the matching `-result` event carrying the
     production, "ON AIR" / "PREVIEW" when tally is on) at the left, **VOL** next to it,
     a **NEXT** key immediately left of Reply when paging is needed, and
     **Reply** at the far right. Reply shows the conference being talked to
-    (same as the web client), not the caller. The status subtitle is the
+    (same as the web client), not the caller.
+    While the microphone is live (any key, a GPIO input, VOX, a talk lock
+    or the remote panel), Reply turns red and reads **MIC ON** with the
+    target being talked to, or "N targets". The status subtitle is the
     production **name** (resolved from `user.production` or the server's
     active production, never the raw id). Tap status: menu (see below).
     Hold status 2 s: next key page.
@@ -700,14 +706,16 @@ Every command is answered with the matching `-result` event carrying the
       or leave the layer.
     - **Neo / Mini / Plus**: no spare command key. **Hold VOL 600 ms** to open
       the member layer; a short tap still opens volume.
-    - **Stream Deck + / + XL**: **hold a conference dial 600 ms** to open that
+    - **Stream Deck + / + XL**: **hold a conference dial 1 s** to open that
       conference's member layer (a short press still mutes). In the member
-      layer, dials mix the visible members.
+      layer, dials mix the visible members; a short press mutes that member,
+      and **holding any dial 1 s leaves the layer**. A release between
+      600 ms and 1 s does nothing, on both kinds of dial.
   - **Stream Deck +**: four dials line up with the four keys of the bottom
     row; dial *n* is the same target as that key (current key page). Rotate
     = volume, press = mute. No separate dial paging. Strip swipe pages keys.
   - **Stream Deck + XL**: six dials are paged independently of the keys
-    (**DIALS** on the command row, or swipe the strip) so every target can
+    (swipe the touch strip; there is no DIALS key) so every target can
     be mixed. The web UI labels each dial with its current target.
   - **Neo** touch points act as previous/next **key** page.
   - **Pedal**: three foot switches. Right is always **Reply** and cannot be
@@ -850,6 +858,7 @@ values (e.g. `TALKTOME_USER_PASSWORD`), which is also how the systemd
              "auto_processing": false,
              "dim_db": -15, "dim_feeds_while_speaking": false,
              "dim_when_addressed": true,
+             "network": "lan", "jitter_start_ms": 20,
              "jitter_min_ms": 20, "jitter_max_ms": 400, "reopen_ms": 2000,
              "default_volume_db": 0 },
   "vox": { "enabled": false, "target": "conference:1", "threshold_db": -32, "hang_ms": 600 },
