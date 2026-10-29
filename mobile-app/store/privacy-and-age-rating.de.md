@@ -1,6 +1,6 @@
 # Datenschutz und Altersfreigabe zur Durchsicht
 
-Stand: 28. Oktober 2026. Vorbereitete Angaben für Talktome Intercom 1.0.0.
+Stand: 29. Oktober 2026. Vorbereitete Angaben für Talktome Intercom 1.0.0.
 Die Store-Texte stehen in [app-store.json](app-store.json).
 
 ## App-Datenschutz
@@ -59,11 +59,14 @@ Keine konkrete Altersstufe vorwegnehmen. Apple berechnet sie länderabhängig.
 ## Noch vor App Review
 
 - Datenschutzauskunft und Altersfragen in App Store Connect durchsehen und bestätigen.
-- Erreichbaren Review-Server mit Demo-Konto und erlaubten Testschritten bereitstellen.
+- Review-Server und zwei Demo-Konten sind im privaten App-Review-Bereich hinterlegt;
+  Anmeldung und gegenseitige Sprechberechtigung geprüft. Zweiwege-Audio und
+  Backup-Anmeldung/-Audio noch auf echten Geräten prüfen.
+  Die öffentliche [Anleitungsvorlage](app-review-instructions.en.md) enthält keine Passwörter.
 - Kontaktdaten für App Review eintragen; Zugangsdaten nur im geschützten Review-Bereich.
 - Inhaltsrechte und regionale Verfügbarkeit bestätigen.
 - Neue TestFlight-Version auf einem echten iPhone prüfen, insbesondere AirPods,
-  Lautsprecher/Hörer, Mikrofon, Hintergrundbetrieb, QR-Anmeldung und Watch/Widget.
+  Lautsprecher/Headset, Mikrofon, Hintergrundbetrieb, QR-Anmeldung und Watch/Widget.
 - Build bewusst zur Store-Version auswählen und erst danach zur Prüfung einreichen.
 
 Die Freigabeart steht auf **manuelle Veröffentlichung**. Es wurde keine App-Prüfung

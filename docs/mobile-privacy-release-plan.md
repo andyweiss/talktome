@@ -27,6 +27,13 @@ Die noch zu bestätigenden Datenschutz-/Altersfragen und Review-Schritte stehen 
 
 TestFlight ist keine öffentliche Store-Veröffentlichung. Vor der Einreichung sind
 Gerätetests und ein für Apple erreichbarer Review-Server samt Demo-Zugang nötig.
+Die englische Review-Anleitung und beide Demo-Konten sind im privaten
+App-Review-Bereich hinterlegt. Beide Konten konnten sich am primären HTTPS-Server
+anmelden und haben gegenseitige Sprechberechtigung in derselben Produktion.
+Ein echter Zweiwege-Audiotest steht noch aus. Die Backup-Adresse verwendet ein
+selbstsigniertes Zertifikat; der private Text erklärt dessen Host-Pinning.
+Die öffentliche [Review-Vorlage](../mobile-app/store/app-review-instructions.en.md)
+enthält keine Zugangsdaten.
 
 Die Store-Screenshots liegen unter
 [mobile-app/store/screenshots](../mobile-app/store/screenshots/manifest.json)
