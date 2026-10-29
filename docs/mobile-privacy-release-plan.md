@@ -1,6 +1,6 @@
 # Vorbereitung der ersten iOS-Store-Version
 
-Stand: 28. Oktober 2026.
+Stand: 29. Oktober 2026.
 
 - Öffentliche Datenschutzerklärung in Englisch und Deutsch veröffentlicht.
 - Privacy-Policy-Link auf Login, Profilübersicht und im Session-Menü eingebaut.
@@ -12,6 +12,13 @@ Stand: 28. Oktober 2026.
 - Build 34 wurde lokal gebaut, von Apple verarbeitet und ist in der internen
   TestFlight-Gruppe „Team“ verfügbar. Er ergänzt die Audioauswahl innerhalb der App, einen neutralen,
   abgerundeten Play-Pfeil und Scene-Start für das iOS-27-SDK.
+
+- Build 35 wurde lokal gebaut, von Apple verarbeitet und ist in der internen
+  TestFlight-Gruppe „Team“ verfügbar. Er entfernt die nicht
+  unterstützte iPhone-Ohrhöreroption und ergänzt unter Session → Accessories
+  die Watch-Mehrfachauswahl einschließlich Reply. Ein gewähltes Ziel erscheint
+  auf der Watch bildschirmfüllend; mehrere als Liste. Die Auswahl bleibt pro
+  Profil und Produktion gespeichert.
 
 Der aktuelle Metadatenstand steht in
 [app-store.json](../mobile-app/store/app-store.json).
@@ -26,7 +33,7 @@ Die Store-Screenshots liegen unter
 und sind in den englischen und deutschen Store-Entwurf hochgeladen.
 Die öffentliche App-Oberfläche ist derzeit Englisch.
 
-Validierung: 391 mobile Tests, TypeScript, iOS-/Android-Bundle-Export und nativer
+Validierung: 405 mobile Tests, TypeScript, iOS-/Android-Bundle-Export und nativer
 Swift-Routing-Test erfolgreich. Simulator: Login und Datenschutz-Link vor/nach
 Anmeldung, Audio-Menü schließen und außerhalb antippen geprüft. Vorher/Nachher-
 Aufnahmen nach „Done“ sind einschließlich der Statusleiste pixelgleich. Die
@@ -34,4 +41,10 @@ Screenshot-Kopie deaktiviert ausschließlich im Simulator Audio-I/O wegen eines
 RemoteIO-RPC-Absturzes. Deshalb ersetzt dies keine Hör-/AirPods-Prüfung auf echter
 Hardware; die veröffentlichte Geräte-App enthält diese Simulator-Anpassung nicht.
 
-Englische und deutsche TestFlight-Testhinweise sind bei Build 34 hinterlegt.
+Build 35: Watch-Auswahl (ein Ziel, mehrere Ziele, Reply und Wiederherstellung
+nach Neustart) im gekoppelten iPhone-/Watch-Simulator geprüft. Geänderte iPhone-Storebilder
+auf Build 35 aktualisiert, einschließlich der Watch-Auswahl; unveränderte
+Operator-, iPad- und Watch-Bilder bleiben mit Build-34-Herkunft im Manifest
+gekennzeichnet.
+
+Englische und deutsche TestFlight-Testhinweise sind bei Build 34 und 35 hinterlegt.

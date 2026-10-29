@@ -18,7 +18,9 @@
       "files": [
         {
           "file": "iphone/01-operator.png",
-          "sha256": "a230cd60d47e53e379102536aabd123e20c982ef176237be7a40708fcbc232ae"
+          "sha256": "19f5346444871f003afcc596677dcc1ac095c4a41d81a9528c826d92e3de3bf4",
+          "sourceCommit": "bd919d4",
+          "buildNumber": "34"
         },
         {
           "file": "iphone/02-audio-output.png",
