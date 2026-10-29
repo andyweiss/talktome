@@ -163,6 +163,9 @@ Configure **GitHub repository secret** `EXPO_TOKEN` for that Expo account.
 Signing and submission credentials are managed by EAS. For Google Play,
 create the app in the publisher's Play Console, configure Play App Signing and
 an Android upload keystore through `npx eas-cli credentials --platform android`.
+Publisher setup, tester-link instructions and the Android-specific store copy are
+in [the Google Play checklist](store/google-play-setup.de.md) and
+[google-play.json](store/google-play.json).
 Create a Google Cloud service account, enable the Android Publisher API, grant
 the service account the required app/release permissions in Play Console and
 assign its JSON key to the app in EAS Credentials. The key is not a GitHub
