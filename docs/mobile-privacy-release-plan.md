@@ -90,3 +90,32 @@ Gestenzustandstests sowie der Produktionsbuild für iPhone, Widget und Watch sin
 erfolgreich. Zweieransicht und Vollbild aus Zweieransicht/Liste wurden als native
 Simulator-Vorschauen kontrolliert. Die tatsächlichen Touch-Gesten und Audiogeräte
 benötigen weiterhin einen Gerätetest; dafür auch die Watch-App aktualisieren.
+
+Build 38 wurde lokal mit der Korrektur für getrennte Watch-Reply-/Festziel-Buttons
+gebaut (Quellstand `d1df053`). Reply behält einen eigenen Platz, auch bei identischem
+Ziel oder ohne aktuellen Gesprächspartner. 426 Mobile-Tests, TypeScript und native
+Swift-Gesten-/Modellprüfungen sind erfolgreich. Der Produktionsbuild enthält die
+korrekten App-/Widget-/Watch-IDs und Team-Signierung; keine Simulator-Teststeuerung.
+
+In App Store Connect sind Altersfragen gespeichert, die deutsche Datenschutz-URL
+lokalisiert, der kostenlose Preis kontrolliert und vorläufig alle 175 aktuellen
+Store-Regionen ausgewählt. Neue Regionen werden nicht automatisch hinzugefügt.
+Die Veröffentlichung steht wieder auf manuell. Review-Text und private Anleitung
+erklären die getrennten Reply-Buttons. Zugangsdaten bleiben im privaten Bereich.
+
+Der Accountinhaber muss Datenschutzlabel, Inhaltsrechte und EU-Händlerstatus
+abschließen sowie den Gerätetest durchführen. Apple meldet den fehlenden
+Händlerstatus für 27 EU-Regionen. Die genauen Klicks stehen in der
+[Übergabe zur Einreichung](../mobile-app/store/release-handoff.de.md).
+Das Statusleistenflackern beim Schließen von Apples Audioauswahl bleibt als
+bekannte optische Unschönheit bestehen; die System-Geräteauswahl bleibt erhalten.
+
+Expo Doctor meldet weiterhin Versions-/Verzeichnis-Hinweise und warnt pauschal
+vor einer Hermes-V1-Speicherregression. Laut Expo betrifft die beschriebene
+Speicherregression Apps mit Worklets/Reanimated; beide Pakete sind hier nicht
+installiert/importiert. Dies wurde nicht durch einen SDK-Wechsel im Release
+verändert. [Expo-Hinweise](https://expo.dev/changelog/sdk-57#known-regressions)
+
+Apple hat Build 38 als gültig verarbeitet; er ist in der internen TestFlight-Gruppe
+„Team“ verfügbar und im Store-Entwurf für Version 1.0.0 ausgewählt. Englische und
+deutsche TestFlight-Hinweise sind gespeichert. Keine App-Prüfung eingereicht.

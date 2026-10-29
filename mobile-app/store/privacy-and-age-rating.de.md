@@ -25,7 +25,10 @@ außerhalb der Hauptfunktion können unter Apples Ausnahmen fallen.
 Vor dem Veröffentlichen des Labels noch einmal bestätigen, dass keine zusätzlichen
 SDKs, eigenen Betriebsserver oder Diagnose-Endpunkte hinzugekommen sind. Die
 Datenschutzerklärung allein beantwortet den Fragebogen nicht. Die URL wurde bereits
-in beiden Store-Sprachen eingetragen; das Label ist noch nicht veröffentlicht.
+in beiden Store-Sprachen eingetragen. Das Label ist über die verfügbare API nicht
+einsehbar oder veröffentlichbar. In App Store Connect prüfen und gegebenenfalls
+über „Erste Schritte“ → „Nein, wir erheben keine Daten aus dieser App“ → Speichern
+→ Veröffentlichen abschließen. Grundlage bleibt der reine Client-Betrieb oben.
 
 Ein späteres Hosting-Angebot ist möglich. Vor dessen Start die tatsächlichen Daten,
 Zwecke, Aufbewahrung, Dienstleister und Verantwortlichkeiten dokumentieren und
@@ -37,12 +40,13 @@ Deutsche Fassung: https://platonstudio.de/talktome/privacy/de/
 
 ## Altersfreigabe
 
-Vorbereitete Antworten, noch nicht als endgültige Erklärung gespeichert:
+Die folgenden Antworten sind in App Store Connect gespeichert. Apple berechnet
+überwiegend 4+, mit regional abweichenden Einstufungen. Vor der Einreichung durchsehen:
 
 | Frage | Vorschlag | Grundlage |
 | --- | --- | --- |
 | Messaging und Chat | Ja | Live-Sprachkommunikation zwischen Teilnehmern |
-| Nutzergenerierte Inhalte | Ja | Von Teilnehmern übertragene Sprache |
+| Nutzergenerierte Inhalte | Nein | Apples Definition meint breite Verteilung von Nutzerinhalten. Die App bietet private Team-Sprachkommunikation ohne öffentliche Inhaltsplattform; diese ist unter Messaging und Chat erfasst. |
 | Uneingeschränkter Webzugriff | Nein | Kein eingebauter allgemeiner Webbrowser; Datenschutz-Link öffnet Safari |
 | Werbung | Nein | Keine Werbeintegration |
 | Altersprüfung / Kindersicherung | Nein / Nein | Keine entsprechenden Funktionen |
@@ -58,13 +62,21 @@ Keine konkrete Altersstufe vorwegnehmen. Apple berechnet sie länderabhängig.
 
 ## Noch vor App Review
 
-- Datenschutzauskunft und Altersfragen in App Store Connect durchsehen und bestätigen.
+- Datenschutzauskunft veröffentlichen und gespeicherte Altersfragen durchsehen.
 - Review-Server und zwei Demo-Konten sind im privaten App-Review-Bereich hinterlegt;
   Anmeldung und gegenseitige Sprechberechtigung geprüft. Zweiwege-Audio und
   Backup-Anmeldung/-Audio noch auf echten Geräten prüfen.
   Die öffentliche [Anleitungsvorlage](app-review-instructions.en.md) enthält keine Passwörter.
-- Kontaktdaten für App Review eintragen; Zugangsdaten nur im geschützten Review-Bereich.
-- Inhaltsrechte und regionale Verfügbarkeit bestätigen.
+- Kontaktdaten und Demo-Zugänge sind vollständig im geschützten Review-Bereich hinterlegt.
+- Inhaltsrechte bestätigen. Ob die über eigene Server angebotenen Programm-Feeds
+  fremde Inhalte enthalten und entsprechende Rechte vorliegen, muss der Herausgeber
+  erklären; die App kann dies nicht feststellen.
+- Regionale Verfügbarkeit: vorläufig alle 175 aktuellen Store-Regionen eingerichtet;
+  neue Regionen werden nicht automatisch hinzugefügt. Vor der Einreichung durchsehen.
+- EU-Händlerstatus: Apple meldet `TRADER_STATUS_NOT_PROVIDED`. Unter Geschäftliches
+  → Vereinbarungen → Compliance → Digital Services Act den eigenen Status festlegen
+  und gegebenenfalls Kontaktdaten verifizieren. Diese Selbsteinstufung übernimmt
+  der Accountinhaber. [Apple-Anleitung](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements)
 - Neue TestFlight-Version auf einem echten iPhone prüfen, insbesondere AirPods,
   Lautsprecher/Headset, Mikrofon, Hintergrundbetrieb, QR-Anmeldung und Watch/Widget.
 - Build bewusst zur Store-Version auswählen und erst danach zur Prüfung einreichen.
