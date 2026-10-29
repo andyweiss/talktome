@@ -8,6 +8,7 @@ final class WatchRemoteSession: NSObject, ObservableObject {
   @Published var reachable = false
   @Published var holdingKey: String?
   @Published var lockedKey: String?
+  @Published var touchTargetKey: String?
   @Published var status = "Open TalkToMe on iPhone"
 
   private var awaitingConfirmKey: String?
@@ -85,6 +86,7 @@ final class WatchRemoteSession: NSObject, ObservableObject {
   private func clearHold() {
     holdingKey = nil
     lockedKey = nil
+    touchTargetKey = nil
     requestId = nil
     awaitingConfirmKey = nil
     awaitingLock = false

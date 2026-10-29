@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ios-audio-routes": "bash scripts/test-ios-audio-routes.sh",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:watch-gestures": "bash scripts/test-watch-gestures.sh"
   },
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",

@@ -17,11 +17,16 @@ struct WatchRemoteView: View {
     ZStack {
       ttmBg.ignoresSafeArea()
       content
-      if let holding = remote.holdingTarget, remote.snapshot.targets.count != 2 {
-        TalkingOverlay(target: holding, locked: remote.isLocked(holding))
-          // The hold gesture lives on the list row. This overlay must not steal
-          // the touch, or release would fire immediately. Scroll is locked instead.
-          .allowsHitTesting(false)
+      if let holding = remote.holdingTarget {
+        Button { remote.stopTalk(holding) } label: {
+          TalkingOverlay(target: holding, locked: remote.isLocked(holding))
+        }
+        .buttonStyle(.plain)
+        // The original target retains the gesture until lift. Once latched,
+        // the whole overlay becomes a stop button, including above a list.
+        .allowsHitTesting(remote.isLocked(holding) && remote.touchTargetKey == nil)
+        .accessibilityHidden(!remote.isLocked(holding))
+        .accessibilityLabel("Stop talking to \(holding.label)")
       }
     }
     .onChange(of: scenePhase) { _, phase in
@@ -46,13 +51,17 @@ struct WatchRemoteView: View {
         hint: "Choose Watch targets in Accessories on iPhone. Saved targets may be unavailable in this production."
       )
     } else if remote.snapshot.targets.count == 2 {
-      VStack(spacing: 6) {
-        ForEach(remote.snapshot.targets) { target in
-          SplitTargetTalkView(target: target)
+      GeometryReader { geometry in
+        VStack(spacing: 4) {
+          ForEach(remote.snapshot.targets) { target in
+            SplitTargetTalkView(target: target)
+              .frame(height: max(0, (geometry.size.height - 4) / 2))
+          }
         }
+        .frame(width: geometry.size.width, height: geometry.size.height)
       }
+      .ignoresSafeArea(.container, edges: .vertical)
       .padding(.horizontal, 4)
-      .padding(.bottom, 4)
     } else if (remote.snapshot.singleTargetMode || remote.snapshot.twoTargetMode),
               let target = remote.snapshot.targets.first {
       SingleTargetTalkView(target: target)
@@ -118,16 +127,8 @@ private struct HoldTalkRow: View {
     .padding(.vertical, 8)
     .listRowBackground(rowBackground)
     .contentShape(Rectangle())
-    // maximumDistance .infinity keeps the press alive while the finger drifts;
-    // talk only stops when the finger lifts. Scroll is disabled while holding.
     .opacity(target.canTalk ? 1 : 0.45)
-    .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
-      if pressing {
-        remote.beginTalk(target)
-      } else {
-        remote.endTalk(target)
-      }
-    }, perform: {})
+    .modifier(WatchTalkControl(target: target, scrollable: true))
   }
 
   private var rowBackground: Color {
@@ -166,22 +167,13 @@ private struct SplitTargetTalkView: View {
     .clipShape(RoundedRectangle(cornerRadius: 16))
     .contentShape(Rectangle())
     .opacity(target.canTalk ? 1 : 0.45)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("Talk to \(target.label)")
-    .accessibilityAddTraits(.isButton)
-    .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
-      if pressing { remote.beginTalk(target) }
-      else { remote.endTalk(target) }
-    }, perform: {})
+    .modifier(WatchTalkControl(target: target))
   }
 }
 
 private struct SingleTargetTalkView: View {
   @EnvironmentObject private var remote: WatchRemoteSession
   let target: WatchRemoteTarget
-  @GestureState private var gestureActive = false
-  @State private var gestureStarted = false
-  @State private var stoppedLock = false
 
   var body: some View {
     VStack(spacing: 8) {
@@ -213,39 +205,90 @@ private struct SingleTargetTalkView: View {
     .background(remote.isLocked(target) ? ttmTalking : target.highlighted ? ttmSpeaking.opacity(0.18) : ttmBg)
     .contentShape(Rectangle())
     .opacity(target.canTalk ? 1 : 0.5)
+    .modifier(WatchTalkControl(target: target))
+  }
+}
+
+/// All target layouts use the same hold/drag/cancel handling. A list row waits
+/// briefly for a hold so an ordinary vertical scroll can win before talk starts.
+private struct WatchTalkControl: ViewModifier {
+  @EnvironmentObject private var remote: WatchRemoteSession
+  let target: WatchRemoteTarget
+  var scrollable = false
+  @GestureState private var tracking = false
+  @State private var interaction = WatchTalkGesture()
+  @State private var pressedTarget: WatchRemoteTarget?
+
+  func body(content: Content) -> some View {
+    Group {
+      if scrollable {
+        content.simultaneousGesture(
+          LongPressGesture(minimumDuration: 0.15, maximumDistance: 12)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .updating($tracking) { _, active, _ in active = true }
+            .onChanged { value in
+              switch value {
+              case .first(true): begin()
+              case .second(true, let drag):
+                begin()
+                if let drag { move(drag) }
+              default: break
+              }
+            }
+            .onEnded { _ in finish() }
+        )
+      } else {
+        content.gesture(
+          DragGesture(minimumDistance: 0)
+            .updating($tracking) { _, active, _ in active = true }
+            .onChanged { value in begin(); move(value) }
+            .onEnded { _ in finish() }
+        )
+      }
+    }
+    .onChange(of: tracking) { _, active in if !active { finish() } }
+    .onDisappear { finish() }
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Talk to \(target.label)")
     .accessibilityAddTraits(.isButton)
     .accessibilityValue(target.canTalk ? "" : "Unavailable")
-    .accessibilityHint("Hold and swipe left to lock; tap a locked target to stop")
+    .accessibilityHint("Hold and swipe left to lock; tap the locked screen to stop")
     .accessibilityAction {
       if remote.isLocked(target) { remote.stopTalk(target) }
       else { remote.beginTalk(target); remote.lockTalk(target) }
     }
-    .onChange(of: gestureActive) { _, active in
-      if !active {
-        if !stoppedLock { remote.endTalk(target) }
-        gestureStarted = false
-        stoppedLock = false
-      }
+  }
+
+  private func begin() {
+    guard !interaction.active else { return }
+    pressedTarget = target
+    remote.touchTargetKey = target.key
+    dispatch(interaction.begin(wasLocked: remote.isLocked(target)), target: target)
+  }
+
+  private func move(_ value: DragGesture.Value) {
+    guard let pressedTarget else { return }
+    let action = interaction.move(x: Double(value.translation.width),
+      y: Double(value.translation.height), startX: Double(value.startLocation.x))
+    dispatch(action, target: pressedTarget)
+  }
+
+  private func finish() {
+    let action = interaction.finish()
+    guard let pressedTarget else { return }
+    dispatch(action, target: pressedTarget)
+    if remote.touchTargetKey == pressedTarget.key { remote.touchTargetKey = nil }
+    self.pressedTarget = nil
+  }
+
+  private func dispatch(_ action: WatchTalkGesture.Action, target: WatchRemoteTarget) {
+    switch action {
+    case .start: remote.beginTalk(target)
+    case .stop: remote.stopTalk(target)
+    case .lock: remote.lockTalk(target)
+    case .release: remote.endTalk(target)
+    case .none: break
     }
-    .gesture(DragGesture(minimumDistance: 0)
-      .updating($gestureActive) { _, state, _ in state = true }
-      .onChanged { value in
-        if !gestureStarted {
-          gestureStarted = true
-          stoppedLock = remote.isLocked(target)
-          remote.beginTalk(target)
-        }
-        if !stoppedLock && value.translation.width <= -60 && abs(value.translation.height) < 80 {
-          remote.lockTalk(target)
-        }
-      }
-      .onEnded { _ in
-        if !stoppedLock { remote.endTalk(target) }
-        gestureStarted = false
-        stoppedLock = false
-      })
   }
 }
 
@@ -254,24 +297,28 @@ private struct TalkingOverlay: View {
   let locked: Bool
 
   var body: some View {
-    ZStack {
-      ttmTalking.ignoresSafeArea()
+    GeometryReader { geometry in
       VStack(spacing: 8) {
-        Text("TALKING")
-          .font(.caption.weight(.bold))
-          .tracking(1.4)
-        Text(target.label)
-          .font(.title3.weight(.bold))
-          .multilineTextAlignment(.center)
-        if locked { Image(systemName: "lock.fill") }
-        Text(locked ? "Tap to stop" : "← Swipe left to lock")
-          .font(.caption)
-          .opacity(0.86)
-        if !locked { Text("Release to stop").font(.caption2).opacity(0.86) }
+        Text("Talking · \(target.label)")
+          .font(.system(size: 18, weight: .bold))
+          .lineLimit(1)
+          .minimumScaleFactor(0.55)
+        HStack(spacing: 5) {
+          if locked { Image(systemName: "lock.fill") }
+          Text(locked ? "Tap to stop" : "← Swipe left to lock")
+        }
+        .font(.caption2)
+        .opacity(0.9)
+        Spacer(minLength: 0)
       }
-      .foregroundStyle(.white)
-      .padding()
+      .padding(.horizontal, 8)
+      .padding(.top, max(8, geometry.size.height * 0.08))
+      .frame(width: geometry.size.width, height: geometry.size.height * 2 / 3, alignment: .top)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .foregroundStyle(.white)
+    .background(ttmTalking.ignoresSafeArea())
+    .contentShape(Rectangle())
   }
 }
 
