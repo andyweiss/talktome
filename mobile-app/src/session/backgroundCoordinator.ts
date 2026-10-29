@@ -2,6 +2,7 @@ import { AppState, Platform, type AppStateStatus } from 'react-native';
 
 import {
   activateForIntercom,
+  playWatchReadyCue,
   audioSessionAvailable,
   deactivateAudioSession,
   reactivateForOutgoingTalkCapture,
@@ -99,6 +100,7 @@ import { publishSessionPresence, subscribeAppTerminating, subscribeDisconnectSho
 import { shouldDisconnectForAppStateChange } from './presenceShutdown';
 import { mainButtonStorageKey } from './mainButton';
 import { buildWatchRemoteSnapshot } from '../watch/snapshot';
+import { WatchTalkControl } from '../watch/talkControl';
 import { publishWatchRemote, subscribeWatchRemote, ackWatchTalk, type WatchRemoteCommand } from '../watch/native';
 import { bleFieldsFromSelection, bleSelectionFromState, useSessionStore } from './state';
 import type { SessionController } from './sessionController';
@@ -115,6 +117,20 @@ export class BackgroundCoordinator {
   private hardwareLiveDevices: BleDeviceState[] = [];
   private unsubscribeHardware: (() => void) | null = null;
   private pairingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private readonly watchTalk = new WatchTalkControl({
+    resolve: command => this.resolveWatchTarget(command),
+    allowed: target => useSessionStore.getState().operatorReady && this.watchRemoteSnapshot().targets.some(
+      row => row.key === talkTargetIdentity(target) && row.canTalk),
+    press: (input, target) => this.c.talk.pressRemote(input, target),
+    release: input => this.c.talk.releaseRemote(input),
+    lock: target => this.c.talk.lockRemote(target),
+    unlock: target => this.c.talk.unlockRemote(target),
+    talking: target => this.c.talkingTargets.some(item => talkTargetIdentity(item) === talkTargetIdentity(target)),
+    locked: target => this.c.lockedTargets.some(item => talkTargetIdentity(item) === talkTargetIdentity(target)),
+    readyCue: playWatchReadyCue,
+    ack: ackWatchTalk,
+  });
 
   constructor(private readonly c: SessionController) {}
 
@@ -440,10 +456,11 @@ export class BackgroundCoordinator {
     });
     subscribeWatchRemote({
       onTalkStart: (command) => {
-        void this.handleWatchTalk(command, true);
+        void this.watchTalk.handle(command, 'start');
       },
+      onTalkLock: command => { void this.watchTalk.handle(command, 'lock'); },
       onTalkStop: (command) => {
-        void this.handleWatchTalk(command, false);
+        void this.watchTalk.handle(command, 'stop');
       },
     });
     this.appStateSubscription?.remove();
@@ -942,28 +959,6 @@ export class BackgroundCoordinator {
     await this.handleTalkControl(deviceId, 'ptt', pressed);
   }
 
-  private async handleWatchTalk(command: WatchRemoteCommand, pressed: boolean): Promise<void> {
-    if (!pressed) {
-      const target = this.resolveWatchTarget(command);
-      if (target) {
-        await this.c.talk.releaseTalk(target);
-      }
-      return;
-    }
-    const target = this.resolveWatchTarget(command);
-    const allowed = target && this.watchRemoteSnapshot().targets.some(row =>
-      row.key === talkTargetIdentity(target) && row.canTalk);
-    if (!useSessionStore.getState().operatorReady || !target || !allowed) {
-      ackWatchTalk({ key: command.key, talking: false });
-      return;
-    }
-    await this.c.talk.pressTalk(target);
-    const talking = this.c.talkingTargets.some(
-      (item) => talkTargetIdentity(item) === talkTargetIdentity(target),
-    );
-    ackWatchTalk({ key: command.key, talking });
-  }
-
   private resolveWatchTarget(command: WatchRemoteCommand): TalkTarget | null {
     const targets = useSessionStore.getState().targets;
     if (command.key) {
@@ -1046,6 +1041,7 @@ export class BackgroundCoordinator {
       replyTarget: state.replyTarget,
       talking: state.talking,
       talkingTargets: this.c.talkingTargets,
+      lockedTargetKeys: state.lockedTargetKeys,
       incoming: state.incoming,
     });
   }

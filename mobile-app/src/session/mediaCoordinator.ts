@@ -25,7 +25,7 @@ import {
   setWebRTCAudioEnabled,
 } from '../audio/session';
 import { shouldPrepareAudioForMedia } from '../audio/policy';
-import { normalizeAudioRouteId, readAudioRouteSnapshot, selectAudioRoute, type AudioRouteSnapshot } from '../audio/routes';
+import { restoreSavedAudioRoute, normalizeAudioRouteId, readAudioRouteSnapshot, selectAudioRoute, type AudioRouteSnapshot } from '../audio/routes';
 import { saveAudioPreferences } from './audioPrefs';
 import {
   resolveOperatorAudio,
@@ -288,11 +288,7 @@ export class MediaCoordinator {
 
   private async selectSavedAudioRoute(): Promise<void> {
     const id = useSessionStore.getState().operatorAudio.audioRouteId;
-    if (!id) {
-      this.publishAudioDevices();
-      return;
-    }
-    this.publishAudioDevices(await selectAudioRoute(id));
+    this.publishAudioDevices(await restoreSavedAudioRoute(id));
   }
 
   private publishCaptureDebug(): void {

@@ -13,12 +13,23 @@ import { describeAudioRouteKind, type AudioRouteKind } from '../audio/routes';
 import { session, useSessionStore } from '../session/store';
 import { HeadphonesIcon, PhoneIcon, SpeakerIcon } from './icons';
 import { colors } from './theme';
+import { IosSystemRoutePicker, iosSystemRoutePickerAvailable } from './IosSystemRoutePicker';
 
-/** The menu stays in the operator view: no system presentation or status-bar handoff. */
+/** iOS owns route selection; Android and builds without the native picker use the app menu. */
 export function AudioRouteButton({ onPress }: { onPress: () => void }) {
   const routes = useSessionStore((state) => state.audioRoutes);
   const selected = routes.find((route) => route.selected) ?? routes[0];
   const kind = selected?.kind ?? 'speaker';
+  if (Platform.OS === 'ios' && iosSystemRoutePickerAvailable) {
+    return (
+      <View collapsable={false} style={styles.button}>
+        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <RouteKindIcon kind={kind} />
+        </View>
+        <IosSystemRoutePicker />
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
@@ -54,8 +65,7 @@ export function AudioRouteMenu({ onClose }: { onClose: () => void }) {
       if (mounted.current) setPending(null);
     }
   };
-  // Native snapshots list stable speaker/phone/headset identities, independent
-  // of the system media picker merging and reordering its presentation routes.
+  // Used on Android and only as a fallback when the native iOS picker is unavailable.
   const content = (
     <View style={styles.backdrop} accessibilityViewIsModal>
       <Pressable

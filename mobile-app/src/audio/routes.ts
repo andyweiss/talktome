@@ -66,7 +66,7 @@ function parseRoute(value: unknown): AudioRoute | null {
   }
   const item = value as Record<string, unknown>;
   const id = asString(item.id);
-  if (!id || (Platform.OS === 'ios' && (id === 'receiver' || item.kind === 'receiver'))) {
+  if (!id) {
     return null;
   }
   return {
@@ -177,4 +177,10 @@ export function describeAudioRouteKind(kind: AudioRouteKind): string {
     default:
       return 'Other';
   }
+}
+
+/** iOS restores its own output; ignore saved selections from the former app menu. */
+export async function restoreSavedAudioRoute(id: string): Promise<AudioRouteSnapshot> {
+  if ((Platform.OS === 'ios' && hasSystemRoutePicker()) || !id) return readAudioRouteSnapshot();
+  return selectAudioRoute(id);
 }

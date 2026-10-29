@@ -10,12 +10,16 @@ The app includes:
 - Server remote-panel control and synchronized operator preferences.
 - Live speaker names on conference cards, including listen-only conferences.
 - Automatic reconnect with cancellation of superseded connection attempts.
-- Background audio, native route selection and Android foreground service.
+- Background audio, the native iOS audio route picker and Android foreground service.
+  iOS owns the selected output; saved choices from the former app menu are ignored.
 - BLE push-to-talk accessories, including PTT-Z01 and Herda HB980-Plus profiles.
 - iOS Live Activities, widgets and shortcuts; Android session widget.
 - Apple Watch talk remote; audio stays on the iPhone. Under Accessories → Watch targets,
   choose Reply and/or fixed talk targets per profile and production. One chosen target
-  fills the Watch screen; multiple targets use the list. The default is all targets.
+  fills the Watch screen; two targets use fixed upper/lower buttons, and more use a list.
+  In full screen, hold and swipe left to lock talk; tap again to stop. The ready
+  beep plays through the selected external iPhone audio output, or on Watch when
+  no external output is selected. The default is all targets.
 - Per-host certificate pinning for self-hosted servers with self-signed TLS.
 
 ## Development

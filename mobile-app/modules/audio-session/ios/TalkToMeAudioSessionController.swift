@@ -17,7 +17,7 @@ final class TalkToMeAudioSessionController {
   private var routePreference = TalkToMeAudioRoutePreference()
   private var preferredRouteId: String {
     get { routePreference.preferredId }
-    set { routePreference.preferredId = newValue }
+    set { routePreference.selectRoute(newValue) }
   }
   private var routeSelectionDeadline: TimeInterval = 0
   private var cuePlayer: AVAudioPlayer?
@@ -60,15 +60,32 @@ final class TalkToMeAudioSessionController {
     }
   }
 
-  private func cueURL(_ name: String) -> URL? {
+  /// Play the Watch confirmation through an already selected external output.
+  /// Never change the session or route just to play a cue. True also suppresses
+  /// the Watch speaker if its local playback fails while a headset is selected.
+  func playWatchReadyCue() -> Bool {
+    let external = AVAudioSession.sharedInstance().currentRoute.outputs.contains {
+      $0.portType != .builtInSpeaker && $0.portType != .builtInReceiver
+    }
+    guard activeProfile != "idle", external else { return false }
+    if let url = cueURL("watch-ready", fileExtension: "wav"),
+       let player = try? AVAudioPlayer(contentsOf: url) {
+      cuePlayer = player
+      player.prepareToPlay()
+      player.play()
+    }
+    return true
+  }
+
+  private func cueURL(_ name: String, fileExtension: String = "mp3") -> URL? {
     let candidates = [Bundle.main, Bundle(for: TalkToMeAudioSessionModule.self)]
     for bundle in candidates {
-      if let url = bundle.url(forResource: name, withExtension: "mp3") {
+      if let url = bundle.url(forResource: name, withExtension: fileExtension) {
         return url
       }
       if let nested = bundle.url(forResource: "TalkToMeAudioSession", withExtension: "bundle"),
          let resourceBundle = Bundle(url: nested),
-         let url = resourceBundle.url(forResource: name, withExtension: "mp3") {
+         let url = resourceBundle.url(forResource: name, withExtension: fileExtension) {
         return url
       }
     }
@@ -135,13 +152,13 @@ final class TalkToMeAudioSessionController {
   }
 
   func selectRoute(_ id: String) throws {
-    let previous = preferredRouteId
+    let previous = routePreference
     setPreferredRouteId(id)
     routeSelectionDeadline = Date.timeIntervalSinceReferenceDate + 2
     do {
       try applyPreferredRoute(AVAudioSession.sharedInstance())
     } catch {
-      preferredRouteId = previous
+      routePreference = previous
       routeSelectionDeadline = 0
       throw error
     }
@@ -222,22 +239,18 @@ final class TalkToMeAudioSessionController {
     try session.setPreferredSampleRate(44_100)
     try session.setPreferredIOBufferDuration(0.02)
     #else
-    try session.setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [
-        .allowBluetoothHFP,
-        .allowBluetoothA2DP,
-        .defaultToSpeaker,
-      ]
-    )
+    let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .allowBluetoothA2DP, .defaultToSpeaker]
+    // Reapplying an unchanged category can itself cause a route change.
+    if session.category != .playAndRecord || session.mode != .voiceChat || session.categoryOptions != options {
+      try session.setCategory(.playAndRecord, mode: .voiceChat, options: options)
+    }
     try session.setPreferredSampleRate(48_000)
     try session.setPreferredIOBufferDuration(0.01)
     #endif
   }
 
   private func applyPreferredRoute(_ session: AVAudioSession) throws {
-    guard !routePreference.isPickerPresented else { return }
+    guard !routePreference.usesSystemRouting, !routePreference.isPickerPresented else { return }
     if preferredRouteId.hasPrefix("port:") {
       let uid = String(preferredRouteId.dropFirst(5))
       if let port = session.availableInputs?.first(where: { $0.uid == uid }) {
@@ -281,6 +294,13 @@ final class TalkToMeAudioSessionController {
       let id = "port:\(input.uid)"
       routes.append(routeEntry(id: id, label: input.portName, kind: kind, selected: currentId == id))
     }
+    // Include the actual output for display/debugging even when it has no
+    // selectable input (A2DP-only, wired output, AirPlay, etc.). iOS selects it.
+    if !routes.contains(where: { ($0["id"] as? String) == currentId }),
+       let output = session.currentRoute.outputs.first {
+      routes.append(routeEntry(id: currentId, label: output.portName,
+        kind: routeKind(for: output.portType) ?? "other", selected: true))
+    }
     return routes
   }
 
@@ -304,18 +324,16 @@ final class TalkToMeAudioSessionController {
     }) {
       return "port:\(wired.uid)"
     }
-    if preferredRouteId.hasPrefix("port:"),
-       session.availableInputs?.contains(where: { "port:\($0.uid)" == preferredRouteId }) == true {
-      return preferredRouteId
-    }
-    return "speaker"
+    return outputs.first.map { "output:\($0.uid)" } ?? "system"
   }
 
   private func routeKind(for portType: AVAudioSession.Port) -> String? {
     switch portType {
     case .builtInSpeaker:
       return "speaker"
-    case .builtInReceiver, .builtInMic:
+    case .builtInReceiver:
+      return "receiver"
+    case .builtInMic:
       return "other"
     case .bluetoothHFP, .bluetoothA2DP, .bluetoothLE:
       return "bluetooth"
@@ -394,9 +412,8 @@ final class TalkToMeAudioSessionController {
     }
     if notification.name == TalkToMeAudioRoutePickerView.didDismissRoutes {
       routePreference.endPicker(currentId: resolvedRouteId(session))
-      if activeProfile != "idle", session.category == .playAndRecord {
-        try? applyPreferredRoute(session)
-      }
+      // Do not translate the system selection back into an input preference
+      // or speaker override. The system picker already selected the route.
       onRouteChange?()
       return
     }

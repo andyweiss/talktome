@@ -178,3 +178,23 @@ describe('native remote panel', () => {
     f.update({ identity: { kind: 'guest', id: 'guest', name: 'Guest' } }); await f.register(); expect(f.host.report).not.toHaveBeenCalled();
   });
 });
+
+
+describe('iOS system-managed output', () => {
+  it('does not restore saved panel outputs over the system-selected route', async () => {
+    const f = fixture(); f.host.systemAudioRouting = true;
+    f.update({ audioRoutes: [{ id: 'port:airpods', label: 'AirPods', kind: 'bluetooth', selected: true },
+      { id: 'speaker', label: 'Speaker', kind: 'speaker', selected: false }] });
+    await f.register({ revision: 3, storage: { preferredAudioOutputDeviceId: 'speaker' } });
+    expect(f.host.selectAudioRoute).not.toHaveBeenCalled();
+    expect(f.panel.report()?.runtime.outputDeviceId).toBe('port:airpods');
+  });
+  it('applies an explicit live route command but leaves output alone for unrelated preferences', async () => {
+    const f = fixture(); f.host.systemAudioRouting = true;
+    await f.register({ revision: 3, storage: { preferredAudioOutputDeviceId: 'receiver' } });
+    expect(await f.panel.handleCommand({ kind: 'preferences', patch: { 'stoppedFeeds:user:1': '{}' } })).toMatchObject({ ok: true });
+    expect(f.host.selectAudioRoute).not.toHaveBeenCalled();
+    expect(await f.panel.handleCommand({ kind: 'preferences', patch: { preferredAudioOutputDeviceId: 'receiver' } })).toMatchObject({ ok: true });
+    expect(f.host.selectAudioRoute).toHaveBeenCalledWith('receiver');
+  });
+});

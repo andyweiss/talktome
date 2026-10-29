@@ -16,6 +16,7 @@ export type PanelSessionState = Pick<SessionUiState,
   | 'lockedTargetKeys' | 'targets' | 'replyTarget'>;
 
 export type RemotePanelHost = {
+  systemAudioRouting?: boolean;
   state(): PanelSessionState;
   subscribe(listener: (state: PanelSessionState, previous: PanelSessionState) => void): () => void;
   defaultAudioProfile(): AudioProfileName;
@@ -270,7 +271,8 @@ export class RemotePanelCoordinator {
               if (value === null) delete this.storage[key]; else this.storage[key] = value;
             }
           }
-          await this.applyStoredPreferences(true);
+          await this.applyStoredPreferences(true,
+            !this.host.systemAudioRouting || Object.hasOwn(command.patch, 'preferredAudioOutputDeviceId'));
         } else if (command.kind === 'production') {
           if (!this.host.state().productions.some(production => production.id === command.productionId)) throw new Error('Production is not assigned.');
           await this.host.selectProduction(command.productionId);
@@ -338,7 +340,7 @@ export class RemotePanelCoordinator {
     }
   }
 
-  private async applyStoredPreferences(verifyRoute: boolean): Promise<void> {
+  private async applyStoredPreferences(verifyRoute: boolean, applyOutput = !this.host.systemAudioRouting): Promise<void> {
     const epoch = this.epoch;
     const userId = positiveId(this.host.state().identity?.id)!;
     let conference: ConferenceListenState = EMPTY_CONFERENCE_LISTEN;
@@ -364,8 +366,8 @@ export class RemotePanelCoordinator {
     await this.applyMainButtons();
     this.ensureCurrent(epoch);
     const routeId = this.storage.preferredAudioOutputDeviceId;
-    if (verifyRoute && routeId === '') throw new Error('Choose a specific mobile audio route.');
-    if (routeId) {
+    if (applyOutput && verifyRoute && routeId === '') throw new Error('Choose a specific mobile audio route.');
+    if (applyOutput && routeId) {
       const state = this.host.state();
       const available = state.audioSessionAvailable && state.audioRoutes.some(route => route.id === routeId);
       if (available && !state.audioRoutes.some(route => route.id === routeId && route.selected)) await this.host.selectAudioRoute(routeId);

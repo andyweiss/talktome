@@ -1,6 +1,7 @@
 import { requireNativeModule } from 'expo-modules-core';
 
 import type { WatchRemoteSnapshot } from './snapshot';
+import type { WatchTalkAck } from './talkControl';
 
 export type WatchRemoteStatus = {
   supported: boolean;
@@ -14,15 +15,17 @@ export type WatchRemoteCommand = {
   key: string;
   targetType: string;
   targetId: string;
+  requestId?: string;
 };
 
 type NativeWatchRemote = {
   isAvailable?: () => boolean;
   status?: () => WatchRemoteStatus;
   update?: (snapshot: WatchRemoteSnapshot) => Promise<boolean>;
-  ackTalk?: (payload: { key: string; talking: boolean }) => Promise<boolean>;
+  ackTalk?: (payload: WatchTalkAck) => Promise<boolean>;
   addListener?: {
     (eventName: 'onTalkStart', listener: (event: WatchRemoteCommand) => void): { remove: () => void };
+    (eventName: 'onTalkLock', listener: (event: WatchRemoteCommand) => void): { remove: () => void };
     (eventName: 'onTalkStop', listener: (event: WatchRemoteCommand) => void): { remove: () => void };
   };
 };
@@ -61,12 +64,13 @@ export function publishWatchRemote(snapshot: WatchRemoteSnapshot): void {
   void loadNative()?.update?.(snapshot);
 }
 
-export function ackWatchTalk(payload: { key: string; talking: boolean }): void {
+export function ackWatchTalk(payload: WatchTalkAck): void {
   void loadNative()?.ackTalk?.(payload);
 }
 
 export function subscribeWatchRemote(handlers: {
   onTalkStart?: (command: WatchRemoteCommand) => void;
+  onTalkLock?: (command: WatchRemoteCommand) => void;
   onTalkStop?: (command: WatchRemoteCommand) => void;
 }): () => void {
   const native = loadNative();
@@ -75,6 +79,7 @@ export function subscribeWatchRemote(handlers: {
   }
   const subscriptions = [
     handlers.onTalkStart ? native.addListener('onTalkStart', handlers.onTalkStart) : null,
+    handlers.onTalkLock ? native.addListener('onTalkLock', handlers.onTalkLock) : null,
     handlers.onTalkStop ? native.addListener('onTalkStop', handlers.onTalkStop) : null,
   ];
   return () => {

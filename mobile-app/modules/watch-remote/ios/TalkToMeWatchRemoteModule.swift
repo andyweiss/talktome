@@ -7,7 +7,7 @@ public final class TalkToMeWatchRemoteModule: Module {
   public func definition() -> ModuleDefinition {
     Name("TalkToMeWatchRemote")
 
-    Events("onTalkStart", "onTalkStop")
+    Events("onTalkStart", "onTalkStop", "onTalkLock")
 
     OnCreate {
       self.controller.onCommand = { [weak self] message in
@@ -38,12 +38,15 @@ public final class TalkToMeWatchRemoteModule: Module {
   private func handle(_ message: [String: Any]) {
     let type = (message["type"] as? String) ?? ""
     let payload: [String: Any] = [
+      "requestId": message["requestId"] as? String ?? "",
       "key": message["key"] as? String ?? "",
       "targetType": message["targetType"] as? String ?? "",
       "targetId": message["targetId"] as? String ?? "",
     ]
     if type == "talk-start" {
       sendEvent("onTalkStart", payload)
+    } else if type == "talk-lock" {
+      sendEvent("onTalkLock", payload)
     } else if type == "talk-stop" {
       sendEvent("onTalkStop", payload)
     }

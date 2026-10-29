@@ -22,6 +22,7 @@ import {
   type TalkTarget,
 } from '../protocol';
 import { audioSessionAvailable, playConnectionCue } from '../audio/session';
+import { hasSystemRoutePicker } from '../audio/routes';
 import { isLikelyLocalHost, parseServerAddress } from '../servers/parseServerAddress';
 import { looksLikeTlsFailure } from '../servers/tlsFailure';
 import { pinMatches } from '../servers/tlsPins';
@@ -144,6 +145,7 @@ export class SessionController {
       this.background.syncPresence();
       await this.persistCurrentProfile();
     },
+    systemAudioRouting: Platform.OS === 'ios' && hasSystemRoutePicker(),
     selectAudioRoute: id => this.mediaCoordinator.selectAudioDevice(id),
     selectProduction: async id => {
       const production = useSessionStore.getState().productions.find(item => item.id === id);

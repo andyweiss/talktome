@@ -20,6 +20,8 @@ export type WatchRemoteTarget = {
 
 export type WatchRemoteSnapshot = {
   singleTargetMode: boolean;
+  twoTargetMode: boolean;
+  lockedTargetKeys: string[];
   connected: boolean;
   username: string;
   productionName: string;
@@ -35,6 +37,7 @@ export function watchTalkCandidates(targets: TalkTarget[], peers: PeerSession[])
 
 export function buildWatchRemoteSnapshot(input: {
   selectedTargetKeys?: string[];
+  lockedTargetKeys?: string[];
   operatorReady: boolean;
   username: string;
   productionName?: string | null;
@@ -67,6 +70,8 @@ export function buildWatchRemoteSnapshot(input: {
 
   return {
     singleTargetMode: selection?.length === 1,
+    twoTargetMode: selection?.length === 2,
+    lockedTargetKeys: input.operatorReady ? input.lockedTargetKeys ?? [] : [],
     connected: input.operatorReady,
     username: input.username.trim(),
     productionName: input.productionName?.trim() ?? '',

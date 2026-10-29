@@ -41,6 +41,7 @@ import {
 } from './settingsChrome';
 import { settingsPalette, settingsScheme } from './settingsTheme';
 import { VolumeSlider } from './VolumeSlider';
+import { IosSystemRoutePicker, iosSystemRoutePickerAvailable } from './IosSystemRoutePicker';
 
 type SettingsPage =
   | { kind: 'session' }
@@ -610,7 +611,12 @@ function AudioSettingsPage({ onDimSliding }: { onDimSliding: (active: boolean) =
       </SettingsSection>
 
       <SettingsSection title="Microphone and speaker">
-        {store.audioRoutes.map((route) => (
+        {Platform.OS === 'ios' && iosSystemRoutePickerAvailable ? (
+          <View collapsable={false}>
+            <SettingsRow label="Audio output" value={store.audioOutputLabel} />
+            <IosSystemRoutePicker />
+          </View>
+        ) : store.audioRoutes.map((route) => (
           <SettingsRow
             key={route.id}
             label={route.label}
@@ -621,10 +627,10 @@ function AudioSettingsPage({ onDimSliding }: { onDimSliding: (active: boolean) =
         ))}
         <SettingsHint
           full={Platform.OS === 'ios'
-            ? 'Speaker or a connected headset. Audio stays in communication mode so echo cancellation can run.'
+            ? 'Choose the output with the iOS audio menu. Audio stays in communication mode so echo cancellation can run.'
             : 'In-call style combos: phone earpiece, speaker, or a connected headset. Audio stays in communication mode so echo cancellation can run.'}
           compact={Platform.OS === 'ios'
-            ? 'Speaker or headset. Stays in communication mode.'
+            ? 'Choose the output with the iOS audio menu.'
             : 'Earpiece, speaker, or headset. Stays in communication mode.'}
         />
       </SettingsSection>
@@ -678,7 +684,7 @@ function WatchSettingsSection({ onOpenTargets }: { onOpenTargets: () => void }) 
       <SettingsRow label="Remote" value={watchRemoteShortStatus(status)} />
       {status.appInstalled ? <SettingsNavRow label="Watch targets" value={summary} onPress={onOpenTargets} /> : null}
       <SettingsHint
-        full={`${describeWatchRemoteStatus(status)} Choose Watch targets to show one full-screen talk button or a list of selected targets. Hold to talk; release to stop. Audio stays on the iPhone.`}
+        full={`${describeWatchRemoteStatus(status)} Choose one full-screen target, two fixed buttons, or a list for more targets. In full screen, hold and swipe left to lock; tap to stop. Audio stays on the iPhone.`}
         compact={`${describeWatchRemoteStatus(status)} Choose one or more targets. Audio stays on the iPhone.`}
       />
     </SettingsSection>
@@ -699,8 +705,8 @@ function WatchTargetsSettingsPage() {
       <SettingsSection>
         <SettingsRow label="All talk targets" selected={selected === undefined} onPress={() => session.setWatchTargets(null)} />
         <SettingsHint
-          full="All targets follows the phone. Tap targets below to choose a custom selection. One selected target fills the Watch screen; several use the list. Saved for this profile and production."
-          compact="Choose one full-screen target or several list targets. Saved for this production."
+          full="All targets follows the phone. Tap targets below to choose a custom selection. One selected target fills the Watch screen; two use fixed buttons, more use the list. Saved for this profile and production."
+          compact="One target fills the screen; two use buttons, more use the list. Saved for this production."
         />
       </SettingsSection>
       <SettingsSection title="Choose targets">

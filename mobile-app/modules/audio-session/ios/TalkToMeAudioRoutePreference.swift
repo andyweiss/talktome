@@ -1,5 +1,6 @@
-/// The system picker owns routing while it is visible. Remember its result
-/// before restoring that preference across later audio-session reconfiguration.
+/// iOS owns routing unless a legacy/remote caller explicitly selects a route.
+/// Opening the system picker gives ownership back to iOS, including routes
+/// that cannot be represented by AVAudioSession.availableInputs.
 struct TalkToMeAudioRoutePreference {
   enum ChangeReason: UInt {
     case other = 0
@@ -9,14 +10,17 @@ struct TalkToMeAudioRoutePreference {
     case routeConfigurationChange = 8
   }
 
-  private var storedPreferredId = "speaker"
-  var preferredId: String {
-    get { storedPreferredId }
-    set { storedPreferredId = newValue.isEmpty || newValue == "receiver" ? "speaker" : newValue }
-  }
+  private(set) var preferredId = "speaker"
+  private(set) var usesSystemRouting = true
   private(set) var isPickerPresented = false
 
+  mutating func selectRoute(_ id: String) {
+    preferredId = id.isEmpty || id == "receiver" ? "speaker" : id
+    usesSystemRouting = false
+  }
+
   mutating func beginPicker() {
+    usesSystemRouting = true
     isPickerPresented = true
   }
 
@@ -25,19 +29,17 @@ struct TalkToMeAudioRoutePreference {
     isPickerPresented = false
   }
 
-  /// Returns whether the controller should restore the preferred route.
+  /// Returns whether an explicit legacy/remote preference should be restored.
   mutating func routeDidChange(
     reason: ChangeReason,
     currentId: String,
     preferredStillAvailable: Bool,
     selectionInProgress: Bool = false
   ) -> Bool {
-    if isPickerPresented {
+    if usesSystemRouting {
       preferredId = currentId
       return false
     }
-    // setPreferredInput and overrideOutputAudioPort can report intermediate
-    // routes. Those notifications must not overwrite an explicit selection.
     if selectionInProgress && preferredStillAvailable {
       return currentId != preferredId
     }

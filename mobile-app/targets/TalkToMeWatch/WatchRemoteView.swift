@@ -11,16 +11,22 @@ private let ttmSpeaking = Color(red: 117 / 255, green: 242 / 255, blue: 184 / 25
 
 struct WatchRemoteView: View {
   @EnvironmentObject private var remote: WatchRemoteSession
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
       ttmBg.ignoresSafeArea()
       content
-      if let holding = remote.holdingTarget {
-        TalkingOverlay(target: holding)
+      if let holding = remote.holdingTarget, remote.snapshot.targets.count != 2 {
+        TalkingOverlay(target: holding, locked: remote.isLocked(holding))
           // The hold gesture lives on the list row. This overlay must not steal
           // the touch, or release would fire immediately. Scroll is locked instead.
           .allowsHitTesting(false)
+      }
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase != .active, let target = remote.holdingTarget, !remote.isLocked(target) {
+        remote.endTalk(target)
       }
     }
   }
@@ -39,7 +45,16 @@ struct WatchRemoteView: View {
         detail: "No talk targets",
         hint: "Choose Watch targets in Accessories on iPhone. Saved targets may be unavailable in this production."
       )
-    } else if remote.snapshot.singleTargetMode, let target = remote.snapshot.targets.first {
+    } else if remote.snapshot.targets.count == 2 {
+      VStack(spacing: 6) {
+        ForEach(remote.snapshot.targets) { target in
+          SplitTargetTalkView(target: target)
+        }
+      }
+      .padding(.horizontal, 4)
+      .padding(.bottom, 4)
+    } else if (remote.snapshot.singleTargetMode || remote.snapshot.twoTargetMode),
+              let target = remote.snapshot.targets.first {
       SingleTargetTalkView(target: target)
     } else {
       List {
@@ -126,9 +141,47 @@ private struct HoldTalkRow: View {
   }
 }
 
+private struct SplitTargetTalkView: View {
+  @EnvironmentObject private var remote: WatchRemoteSession
+  let target: WatchRemoteTarget
+
+  private var active: Bool {
+    remote.holdingKey == target.key || remote.snapshot.talkingTargetKey == target.key || remote.isLocked(target)
+  }
+
+  var body: some View {
+    VStack(spacing: 4) {
+      Text(target.pinned ? "Reply" : target.kindLabel)
+        .font(.caption2).foregroundStyle(ttmMuted)
+      Text(target.label)
+        .font(.headline).multilineTextAlignment(.center)
+        .lineLimit(2).minimumScaleFactor(0.65)
+      Text(remote.isLocked(target) ? "Tap to stop" : active ? "Release to stop" : target.canTalk ? "Hold to talk" : "Unavailable")
+        .font(.caption2).foregroundStyle(ttmMuted)
+    }
+    .padding(8)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .foregroundStyle(ttmText)
+    .background(active ? ttmTalking : target.highlighted ? ttmSpeaking.opacity(0.22) : Color.white.opacity(0.08))
+    .clipShape(RoundedRectangle(cornerRadius: 16))
+    .contentShape(Rectangle())
+    .opacity(target.canTalk ? 1 : 0.45)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Talk to \(target.label)")
+    .accessibilityAddTraits(.isButton)
+    .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
+      if pressing { remote.beginTalk(target) }
+      else { remote.endTalk(target) }
+    }, perform: {})
+  }
+}
+
 private struct SingleTargetTalkView: View {
   @EnvironmentObject private var remote: WatchRemoteSession
   let target: WatchRemoteTarget
+  @GestureState private var gestureActive = false
+  @State private var gestureStarted = false
+  @State private var stoppedLock = false
 
   var body: some View {
     VStack(spacing: 8) {
@@ -148,31 +201,57 @@ private struct SingleTargetTalkView: View {
         .minimumScaleFactor(0.65)
         .foregroundStyle(ttmText)
       Spacer(minLength: 4)
-      Image(systemName: "mic.fill").font(.title2).foregroundStyle(ttmAccent)
-      Text(target.canTalk ? "Hold to talk" : "Unavailable")
+      Image(systemName: remote.isLocked(target) ? "lock.fill" : "mic.fill")
+        .font(.title2).foregroundStyle(ttmAccent)
+      Text(remote.isLocked(target) ? "Tap to stop" : target.canTalk ? "Hold to talk" : "Unavailable")
         .font(.caption)
         .foregroundStyle(ttmMuted)
     }
     .padding(.horizontal, 10)
     .padding(.vertical, 8)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(target.highlighted ? ttmSpeaking.opacity(0.18) : ttmBg)
+    .background(remote.isLocked(target) ? ttmTalking : target.highlighted ? ttmSpeaking.opacity(0.18) : ttmBg)
     .contentShape(Rectangle())
     .opacity(target.canTalk ? 1 : 0.5)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Talk to \(target.label)")
     .accessibilityAddTraits(.isButton)
     .accessibilityValue(target.canTalk ? "" : "Unavailable")
-    .accessibilityHint(target.canTalk ? "Hold to talk; release to stop" : "Target unavailable")
-    .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
-      if pressing { remote.beginTalk(target) }
-      else { remote.endTalk(target) }
-    }, perform: {})
+    .accessibilityHint("Hold and swipe left to lock; tap a locked target to stop")
+    .accessibilityAction {
+      if remote.isLocked(target) { remote.stopTalk(target) }
+      else { remote.beginTalk(target); remote.lockTalk(target) }
+    }
+    .onChange(of: gestureActive) { _, active in
+      if !active {
+        if !stoppedLock { remote.endTalk(target) }
+        gestureStarted = false
+        stoppedLock = false
+      }
+    }
+    .gesture(DragGesture(minimumDistance: 0)
+      .updating($gestureActive) { _, state, _ in state = true }
+      .onChanged { value in
+        if !gestureStarted {
+          gestureStarted = true
+          stoppedLock = remote.isLocked(target)
+          remote.beginTalk(target)
+        }
+        if !stoppedLock && value.translation.width <= -60 && abs(value.translation.height) < 80 {
+          remote.lockTalk(target)
+        }
+      }
+      .onEnded { _ in
+        if !stoppedLock { remote.endTalk(target) }
+        gestureStarted = false
+        stoppedLock = false
+      })
   }
 }
 
 private struct TalkingOverlay: View {
   let target: WatchRemoteTarget
+  let locked: Bool
 
   var body: some View {
     ZStack {
@@ -184,9 +263,11 @@ private struct TalkingOverlay: View {
         Text(target.label)
           .font(.title3.weight(.bold))
           .multilineTextAlignment(.center)
-        Text("Release to stop")
+        if locked { Image(systemName: "lock.fill") }
+        Text(locked ? "Tap to stop" : "← Swipe left to lock")
           .font(.caption)
           .opacity(0.86)
+        if !locked { Text("Release to stop").font(.caption2).opacity(0.86) }
       }
       .foregroundStyle(.white)
       .padding()

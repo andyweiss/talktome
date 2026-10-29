@@ -50,7 +50,9 @@ public final class TalkToMeAudioRoutePickerView: ExpoView, AVRoutePickerViewDele
         button.imageView?.isHidden = true
         button.backgroundColor = .clear
         button.tintColor = .clear
-        button.isAccessibilityElement = false
+        button.isAccessibilityElement = true
+        button.accessibilityLabel = "Audio output"
+        button.accessibilityHint = "Choose an audio device with iOS"
       } else {
         expandPickerButton(in: subview)
       }

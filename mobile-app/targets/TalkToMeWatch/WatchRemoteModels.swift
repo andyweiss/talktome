@@ -36,6 +36,8 @@ struct WatchRemoteTarget: Identifiable, Equatable {
 struct WatchRemoteSnapshot: Equatable {
   var connected: Bool
   var singleTargetMode: Bool
+  var twoTargetMode: Bool
+  var lockedTargetKeys: [String]
   var username: String
   var productionName: String
   var talking: Bool
@@ -61,9 +63,13 @@ struct WatchRemoteSnapshot: Equatable {
     talkingTargetKey: String,
     replyTargetKey: String,
     targets: [WatchRemoteTarget],
-    singleTargetMode: Bool = false
+    singleTargetMode: Bool = false,
+    twoTargetMode: Bool = false,
+    lockedTargetKeys: [String] = []
   ) {
     self.singleTargetMode = singleTargetMode
+    self.twoTargetMode = twoTargetMode
+    self.lockedTargetKeys = lockedTargetKeys
     self.connected = connected
     self.username = username
     self.productionName = productionName
@@ -75,6 +81,8 @@ struct WatchRemoteSnapshot: Equatable {
 
   init(message: [String: Any]) {
     singleTargetMode = message["singleTargetMode"] as? Bool ?? false
+    twoTargetMode = message["twoTargetMode"] as? Bool ?? false
+    lockedTargetKeys = message["lockedTargetKeys"] as? [String] ?? []
     connected = message["connected"] as? Bool ?? false
     username = message["username"] as? String ?? ""
     productionName = message["productionName"] as? String ?? ""

@@ -5,9 +5,11 @@ enum WatchTalkBeep {
   private static var player: AVAudioPlayer?
   private static var prepared = false
 
-  static func playConfirmed() {
-    WKInterfaceDevice.current().play(.success)
-    playTone()
+  static func playConfirmed(soundOnWatch: Bool = true) {
+    if soundOnWatch {
+      WKInterfaceDevice.current().play(.success)
+      playTone()
+    }
   }
 
   private static func playTone() {

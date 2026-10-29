@@ -142,3 +142,24 @@ describe('selected Watch targets', () => {
     expect(next.targets.map(x => x.key)).toEqual(['conference-2']);
   });
 });
+
+
+describe('Watch fixed layouts and lock state', () => {
+  it('marks a configured pair and reports the phone locks', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput,
+      selectedTargetKeys: ['reply', 'conference-2'], lockedTargetKeys: ['conference-3'] });
+    expect(next.twoTargetMode).toBe(true);
+    expect(next.targets.map(x => x.key)).toEqual(['conference-2', 'conference-3']);
+    expect(next.lockedTargetKeys).toEqual(['conference-3']);
+  });
+  it('deduplicates Reply when it points at the other selected target', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput,
+      selectedTargetKeys: ['reply', 'conference-3'] });
+    expect(next.twoTargetMode).toBe(true);
+    expect(next.targets).toHaveLength(1);
+  });
+  it('clears locks when disconnected', () => {
+    expect(buildWatchRemoteSnapshot({ ...selectionInput, operatorReady: false,
+      lockedTargetKeys: ['conference-3'] }).lockedTargetKeys).toEqual([]);
+  });
+});

@@ -13,6 +13,7 @@ type NativeAudioSession = {
   deactivate?: () => Promise<boolean>;
   setWebRTCAudioEnabled?: (enabled: boolean) => Promise<boolean>;
   updateNowPlaying?: (title: string, detail: string, active: boolean) => Promise<boolean>;
+  playWatchReadyCue?: () => Promise<boolean>;
   playConnectionCue?: (name: string) => Promise<boolean>;
 };
 
@@ -71,4 +72,10 @@ export async function playConnectionCue(name: 'disconnected' | 'reconnected'): P
 /** Clears leftover iOS Now Playing. TalkToMe does not register as a media player. */
 export async function clearNowPlaying(): Promise<boolean> {
   return (await loadNative()?.updateNowPlaying?.('', '', false)) === true;
+}
+
+/** True means the ready cue belongs to the phone's current external audio output. */
+export async function playWatchReadyCue(): Promise<boolean> {
+  try { return (await loadNative()?.playWatchReadyCue?.()) === true; }
+  catch { return false; }
 }

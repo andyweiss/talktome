@@ -97,7 +97,7 @@ final class TalkToMeWatchRemoteController: NSObject, WCSessionDelegate {
       return
     }
     var message = payload
-    message["type"] = "talk-confirmed"
+    message["type"] = payload["type"] as? String ?? "talk-confirmed"
     WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: nil)
   }
 }
