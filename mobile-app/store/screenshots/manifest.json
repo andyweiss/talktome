@@ -53,12 +53,13 @@
       ],
       "files": [
         {
-          "file": "watch/01-reply.png",
-          "sha256": "512741f4d85a3abf54c4abd38299754e5aaf0bbbcc72fe6ab272f13eed9a972f"
+          "file": "watch/01-reply-fullscreen.png",
+          "sha256": "34121c31e49ad32cfe12e2fdfcd86c4811262e939fb86d66b10b22c7fa90a821"
         }
       ],
-      "sourceCommit": "bd919d4",
-      "buildNumber": "34"
+      "sourceCommit": "0f63866",
+      "buildNumber": "36",
+      "note": "Genuine native Watch simulator capture of the single Reply target. The visible idle full-screen layout is unchanged in build 38; PNG encoded as RGB without alpha for App Store delivery."
     }
   ]
 }
