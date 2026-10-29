@@ -89,6 +89,15 @@ test('server starts without Git from another working directory and serves its bu
   const model = await fetch(`${origin}/remotePanelState.js`);
   assert.equal(model.status, 200);
   assert.equal(await model.text(), fs.readFileSync(path.join(projectRoot, 'public/remotePanelState.js'), 'utf8'));
+  const socketClient = await fetch(`${origin}/socket.io.js`);
+  assert.equal(socketClient.status, 200);
+  for (const privatePath of [
+    '/node_modules/express/package.json',
+    '/node_modules/better-sqlite3/package.json',
+    '/node_modules/socket.io/client-dist/socket.io.js',
+  ]) {
+    assert.equal((await fetch(`${origin}${privatePath}`)).status, 404, privatePath);
+  }
   assert.equal(fs.existsSync(path.join(dataDir, 'app.db')), true);
   execFileSync(process.execPath, [path.join(appDir, 'scripts/container-healthcheck.js')], { cwd: directory, env });
 

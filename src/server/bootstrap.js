@@ -21,6 +21,8 @@ if (printVersionOnly) {
   process.exit(0);
 }
 
+const { normalizeWebAccess } = require("./webAccess");
+
 const execDir = path.dirname(process.execPath);
 const dataDir = getDataDir();
 const dataConfigPath = path.join(dataDir, "config.json");
@@ -396,7 +398,7 @@ async function runWizard(existingConfig = null) {
   });
 
   try {
-    const defaultHttpsPort = existingConfig?.httpsPort ?? 443;
+    const defaultHttpsPort = normalizeWebAccess(existingConfig || {}).httpsPort;
     const defaultMdnsHost = resolveEffectiveMdnsHost(existingConfig);
     const httpsPort = await promptForHttpsPort(rl, defaultHttpsPort);
 
@@ -501,7 +503,7 @@ function applyConfig(config) {
   } else if (config && isInteractive() && !hasEnvConfig()) {
     const mdnsHost = resolveEffectiveMdnsHost(config);
     const httpPort = config.tlsMode === "proxy" ? null : resolveEffectiveHttpPort(config, mdnsHost);
-    const httpsPort = config.httpsPort ?? 443;
+    const httpsPort = normalizeWebAccess(config).httpsPort;
     const rtcPortRange = normalizeRtcPortRange(config.rtcPortStart, config.rtcPortCount);
     const conflicts = [];
 

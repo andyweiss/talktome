@@ -3,11 +3,12 @@ const https = require('node:https');
 const proxyaddr = require('proxy-addr');
 const { isIP } = require('node:net');
 const { installHttpRedirectOnHttpsPort } = require('./httpsRedirect');
+const { isRunningInContainer } = require('./runtimeEnvironment');
 
-function normalizeWebAccess(config = {}) {
+function normalizeWebAccess(config = {}, env = process.env) {
   const tlsMode = config.tlsMode ?? 'internal';
   if (!['internal', 'proxy'].includes(tlsMode)) throw new Error('TLS mode must be internal or proxy');
-  const port = Number(config.httpsPort ?? 443);
+  const port = Number(config.httpsPort ?? (isRunningInContainer(env) ? 8443 : 443));
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Web port must be between 1 and 65535');
   const publicUrl = String(config.publicUrl || '').trim().replace(/\/$/, '');
   if (publicUrl) {
@@ -23,7 +24,7 @@ function normalizeWebAccess(config = {}) {
 }
 
 function resolveWebAccess(config = {}, env = process.env) {
-  const saved = normalizeWebAccess(config);
+  const saved = normalizeWebAccess(config, env);
   const overrides = {
     tlsMode: env.TALKTOME_TLS_MODE,
     httpsPort: env.PORT || env.HTTPS_PORT,
@@ -35,7 +36,7 @@ function resolveWebAccess(config = {}, env = process.env) {
   for (const [key, value] of Object.entries(overrides)) {
     if (value !== undefined) { effective[key] = value; environmentOverrides.push(key); }
   }
-  const active = normalizeWebAccess(effective);
+  const active = normalizeWebAccess(effective, env);
   const trust = active.trustedProxies ? proxyaddr.compile(active.trustedProxies.split(',')) : () => false;
   return { ...active, environmentOverrides, isTrustedProxy(address) {
     try { return Boolean(address && trust(address)); } catch { return false; }

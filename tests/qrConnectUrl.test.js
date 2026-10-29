@@ -45,12 +45,12 @@ test("prefers the selected adapter over an mDNS request URL", () => {
   }), "https://192.168.178.166:8444");
 });
 
-test("prefers the selected adapter over a configured mDNS URL", () => {
+test("respects an explicitly configured mDNS URL and external port", () => {
   assert.equal(selectAdminQrUrl({
-    configuredUrl: "https://intercom.local:8444",
+    configuredUrl: "https://intercom.local:55443",
     requestUrl: "https://intercom.local:8444",
     adapterUrl: "https://192.168.178.166:8444",
-  }), "https://192.168.178.166:8444");
+  }), "https://intercom.local:55443");
 });
 
 test("falls back to mDNS when no adapter or public URL is available", () => {
@@ -100,4 +100,20 @@ test("reverse proxy QR targets use one public URL rather than duplicate backend 
   assert.deepEqual(buildMediaNetworkQrTargets({ addresses: ['192.168.178.166', '192.168.178.88'], tlsMode: 'proxy', proxyUrl: 'https://talktome.example.com' }), [
     { address: 'talktome.example.com', qrUrl: 'https://talktome.example.com' },
   ]);
+});
+
+test("public URLs take precedence for media QR codes and login links in both TLS modes", () => {
+  const { buildMediaNetworkQrTargets } = require('../src/server/qrConnectUrl');
+  for (const tlsMode of ['internal', 'proxy']) {
+    for (const publicUrl of ['https://192.168.178.166:55443', 'https://intercom.local:55443', 'https://[2001:db8::1]:55443']) {
+      const connectUrl = selectAdminQrUrl({ configuredUrl: publicUrl, requestUrl: 'https://localhost:8443', adapterUrl: 'https://192.168.178.166:8443' });
+      assert.equal(connectUrl, publicUrl);
+      const expected = [{ address: new URL(publicUrl).hostname, qrUrl: publicUrl }];
+      for (const addresses of [['192.168.178.166', '192.168.178.88'], []]) {
+        assert.deepEqual(buildMediaNetworkQrTargets({ addresses, port: 8443, tlsMode, publicUrl, proxyUrl: 'https://other.example.com' }), expected);
+      }
+      assert.equal(buildLoginUrl(connectUrl, 'token'), `${publicUrl}/#login=token`);
+      assert.equal(buildGuestLoginUrl(connectUrl), `${publicUrl}/#guest`);
+    }
+  }
 });

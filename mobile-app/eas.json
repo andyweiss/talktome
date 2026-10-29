@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "environment": "production",
+      "env": {
+        "TALKTOME_IOS_BUNDLE_IDENTIFIER": "de.talktome.app",
+        "TALKTOME_APPLE_TEAM_ID": "FRVSN9AQLM",
+        "TALKTOME_MOBILE_BUILD_NUMBER": "38"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6827440765"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}
