@@ -5,10 +5,11 @@ import {
   type PeerSession,
   type TalkTarget,
 } from '../protocol';
-import { selectedWatchTargets, WATCH_REPLY_TARGET } from './selection';
+import { watchTargetCandidates, WATCH_REPLY_TARGET } from './selection';
 import { incomingHighlightsTarget } from '../talk/replyTarget';
 
 export type WatchRemoteTarget = {
+  slotKey: string;
   key: string;
   type: TalkTarget['type'];
   id: string;
@@ -51,22 +52,38 @@ export function buildWatchRemoteSnapshot(input: {
   const selection = input.selectedTargetKeys;
   const talkable = selection === undefined
     ? watchTalkCandidates(input.targets, input.peers)
-    : selectedWatchTargets(input.targets, selection, input.replyTarget);
+    : watchTargetCandidates(input.targets).filter(target => selection.includes(talkTargetIdentity(target)));
   const includeReply = selection === undefined || selection.includes(WATCH_REPLY_TARGET);
   const replyKey = input.replyTarget ? talkTargetIdentity(input.replyTarget) : '';
   const talkingTargetKey = input.talkingTargets[0] ? talkTargetIdentity(input.talkingTargets[0]) : '';
-  const rows = talkable.map((target) => {
+  const rows: WatchRemoteTarget[] = talkable.map((target) => {
     const key = talkTargetIdentity(target);
     return {
+      slotKey: key,
       key,
       type: target.type,
       id: String(target.id),
       label: target.label,
       canTalk: canTalkToTarget(target, input.peers),
-      pinned: includeReply && Boolean(replyKey) && key === replyKey,
+      pinned: false,
       highlighted: input.incoming.addressedNow.some((entry) => incomingHighlightsTarget(entry, target)),
     } satisfies WatchRemoteTarget;
   });
+  // Reply is a display slot, not a fixed target. Never merge it with the same
+  // destination: doing so changes the layout as the incoming caller changes.
+  if (includeReply) {
+    const reply = input.replyTarget;
+    rows.push({
+      slotKey: WATCH_REPLY_TARGET,
+      key: replyKey || WATCH_REPLY_TARGET,
+      type: reply?.type ?? 'user',
+      id: reply ? String(reply.id) : '',
+      label: reply?.label ?? 'No recent caller',
+      canTalk: reply != null && canTalkToTarget(reply, input.peers),
+      pinned: true,
+      highlighted: reply != null && input.incoming.addressedNow.some(entry => incomingHighlightsTarget(entry, reply)),
+    });
+  }
 
   return {
     singleTargetMode: selection?.length === 1,

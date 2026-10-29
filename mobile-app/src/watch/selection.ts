@@ -1,4 +1,4 @@
-import { talkTargetIdentity, type TalkTarget } from '../protocol';
+import type { TalkTarget } from '../protocol';
 
 /** Missing scope means automatic/all targets. An empty array explicitly selects none. */
 export type WatchTargetSelections = Record<string, string[]>;
@@ -26,12 +26,4 @@ export function watchTargetCandidates(targets: TalkTarget[], selfId?: number | s
 export function toggleWatchTarget(selection: string[] | undefined, key: string): string[] {
   const selected = selection ?? [];
   return selected.includes(key) ? selected.filter(item => item !== key) : normalizeWatchTargetKeys([...selected, key]);
-}
-
-export function selectedWatchTargets(
-  targets: TalkTarget[], selection: string[], reply: TalkTarget | null,
-): TalkTarget[] {
-  const keys = new Set(selection);
-  if (keys.has(WATCH_REPLY_TARGET) && reply) keys.add(talkTargetIdentity(reply));
-  return watchTargetCandidates(targets).filter(target => keys.has(talkTargetIdentity(target)));
 }

@@ -1,6 +1,7 @@
 import Foundation
 
 struct WatchRemoteTarget: Identifiable, Equatable {
+  var slotKey: String
   var key: String
   var type: String
   var targetId: String
@@ -9,7 +10,7 @@ struct WatchRemoteTarget: Identifiable, Equatable {
   var pinned: Bool
   var highlighted: Bool
 
-  var id: String { key }
+  var id: String { slotKey }
 
   var kindLabel: String {
     switch type {
@@ -24,6 +25,7 @@ struct WatchRemoteTarget: Identifiable, Equatable {
 
   init(dictionary: [String: Any]) {
     key = dictionary["key"] as? String ?? ""
+    slotKey = dictionary["slotKey"] as? String ?? key
     type = dictionary["type"] as? String ?? "user"
     targetId = dictionary["id"] as? String ?? ""
     label = dictionary["label"] as? String ?? "Target"

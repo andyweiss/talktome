@@ -22,5 +22,20 @@ enum WatchGestureTests {
     precondition(g.finish() == .none)
     precondition(g.move(x: -60, y: 0, startX: 100) == .none) // no stray lock
     print("Watch hold/swipe/lock/release tests passed.")
+
+    let fixed = WatchRemoteTarget(dictionary: ["slotKey": "conference-3", "key": "conference-3"])
+    let reply = WatchRemoteTarget(dictionary: ["slotKey": "reply", "key": "conference-3", "pinned": true])
+    let changedReply = WatchRemoteTarget(dictionary: ["slotKey": "reply", "key": "user-9", "pinned": true])
+    let emptyReply = WatchRemoteTarget(dictionary: ["slotKey": "reply", "key": "reply", "pinned": true, "canTalk": false])
+    precondition(fixed.id != reply.id) // two buttons can address the same destination
+    precondition(reply.id == changedReply.id && reply.id == emptyReply.id)
+    precondition(reply.key != changedReply.key) // commands still use the real destination
+    precondition(WatchRemoteTarget(dictionary: ["key": "conference-3"]).id == fixed.id)
+    let snapshot = WatchRemoteSnapshot(message: ["targets": [
+      ["slotKey": "conference-3", "key": "conference-3"],
+      ["slotKey": "reply", "key": "conference-3", "pinned": true],
+    ]])
+    precondition(snapshot.targets.count == 2 && snapshot.reply?.id == "reply")
+    print("Watch fixed/Reply slot identity tests passed.")
   }
 }

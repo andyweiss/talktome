@@ -17,6 +17,8 @@ The app includes:
 - Apple Watch talk remote; audio stays on the iPhone. Under Accessories → Watch targets,
   choose Reply and/or fixed talk targets per profile and production. One chosen target
   fills the Watch screen; two targets use fixed upper/lower buttons, and more use a list.
+  Reply keeps its own button even when it addresses a selected fixed target; without
+  a recent caller it stays visible but unavailable, keeping the chosen layout stable.
   Hold and swipe left to lock talk in any layout; tap the full-screen display to stop.
   While talking, the target and swipe hint sit near the top of the full-screen display. The ready
   beep plays through the selected external iPhone audio output, or on Watch when

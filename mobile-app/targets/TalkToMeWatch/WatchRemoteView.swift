@@ -50,7 +50,7 @@ struct WatchRemoteView: View {
         detail: "No talk targets",
         hint: "Choose Watch targets in Accessories on iPhone. Saved targets may be unavailable in this production."
       )
-    } else if remote.snapshot.targets.count == 2 {
+    } else if remote.snapshot.twoTargetMode && remote.snapshot.targets.count == 2 {
       GeometryReader { geometry in
         VStack(spacing: 4) {
           ForEach(remote.snapshot.targets) { target in
@@ -62,7 +62,7 @@ struct WatchRemoteView: View {
       }
       .ignoresSafeArea(.container, edges: .vertical)
       .padding(.horizontal, 4)
-    } else if (remote.snapshot.singleTargetMode || remote.snapshot.twoTargetMode),
+    } else if remote.snapshot.singleTargetMode,
               let target = remote.snapshot.targets.first {
       SingleTargetTalkView(target: target)
     } else {
@@ -71,7 +71,7 @@ struct WatchRemoteView: View {
         if let reply = remote.snapshot.reply {
           Section("Reply") {
             HoldTalkRow(target: reply, asReply: true)
-              .id("reply-\(reply.key)")
+              .id(reply.id)
           }
         }
         Section {
