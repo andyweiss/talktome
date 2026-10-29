@@ -82,3 +82,11 @@ Swipe-Hinweis stehen im oberen Bildschirmbereich. Die Zweieransicht nutzt die
 vertikale Fläche bis an die Bildschirmränder. Das eingerastete Vollbild kann
 überall zum Stoppen angetippt werden. Zusätzliche native Swift-Gestentests prüfen
 Wischrichtung, Abstand am linken Rand, Abbruch und Loslassen nach dem Einrasten.
+
+Build 37 wurde lokal als Version 1.0.0 (37) gebaut, von Apple als gültig verarbeitet
+und ist in der internen TestFlight-Gruppe „Team“ verfügbar. Englische und deutsche
+Testhinweise sind hinterlegt. 423 Mobile-Tests, TypeScript, native Routing- und
+Gestenzustandstests sowie der Produktionsbuild für iPhone, Widget und Watch sind
+erfolgreich. Zweieransicht und Vollbild aus Zweieransicht/Liste wurden als native
+Simulator-Vorschauen kontrolliert. Die tatsächlichen Touch-Gesten und Audiogeräte
+benötigen weiterhin einen Gerätetest; dafür auch die Watch-App aktualisieren.
