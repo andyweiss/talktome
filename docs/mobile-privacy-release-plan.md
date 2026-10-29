@@ -52,7 +52,9 @@ Build 35: Watch-Auswahl (ein Ziel, mehrere Ziele, Reply und Wiederherstellung
 nach Neustart) im gekoppelten iPhone-/Watch-Simulator geprüft. Geänderte iPhone-Storebilder
 auf Build 36 aktualisiert, einschließlich der Watch-Auswahl und des nativen
 iOS-Ausgabesymbols. Bilder der aufgegebenen eigenen Audioauswahl entfernt.
-Allgemeine iPad-/Watch-Bilder bleiben mit Build-34-Herkunft im Manifest gekennzeichnet.
+Das allgemeine iPad-Bild bleibt mit Build-34-Herkunft im Manifest gekennzeichnet.
+Das Watch-Bild zeigt die einzelne Reply-Vollbildansicht aus einer nativen
+Build-36-Simulator-Aufnahme; das sichtbare Ruhe-Layout ist in Build 38 unverändert.
 
 Englische und deutsche TestFlight-Testhinweise sind bei Build 34 und 35 hinterlegt.
 
@@ -119,3 +121,8 @@ verändert. [Expo-Hinweise](https://expo.dev/changelog/sdk-57#known-regressions)
 Apple hat Build 38 als gültig verarbeitet; er ist in der internen TestFlight-Gruppe
 „Team“ verfügbar und im Store-Entwurf für Version 1.0.0 ausgewählt. Englische und
 deutsche TestFlight-Hinweise sind gespeichert. Keine App-Prüfung eingereicht.
+
+Store-Grafiken: „Kopfzeile und Suchergebnisse“ bleibt optional leer. Duo-Bilder
+werden für diese erste Einreichung noch nicht ergänzt; zunächst die tatsächliche
+Duo-Ansicht testen. Der bisherige Watch-Listen-Screenshot wird in beiden
+Store-Sprachen durch die einzelne Reply-Vollbildansicht ersetzt.

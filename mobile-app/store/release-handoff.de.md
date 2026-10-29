@@ -17,6 +17,13 @@ Stand: 29. Oktober 2026. App: **Talktome Intercom**, Version **1.0.0**.
 - Private Review-Anleitung, zwei Demo-Konten und vollständige Review-Kontaktdaten.
 - **Manuelle Veröffentlichung** nach einer erfolgreichen App-Prüfung.
 
+„Kopfzeile und Suchergebnisse“ bleibt leer: diese zusätzlichen Creative Assets
+sind optional. iPhone-Duo-Screenshots werden für die erste Einreichung noch nicht
+ergänzt; Apple nennt April 2027 als Pflichttermin (die technischen Spezifikationen
+nennen Apps mit iOS-27.1-SDK oder neuer). Vor einer solchen Ergänzung die echte
+Duo-Ansicht testen. [Apple: Screenshots](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications),
+[Apple: optionale Creative Assets](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-your-app-store-assets)
+
 ## Vom Accountinhaber zu erledigen
 
 1. **App-Datenschutz prüfen und veröffentlichen.** App → App-Datenschutz → Erste
