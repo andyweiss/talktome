@@ -5,8 +5,8 @@ Paketname **`com.talktome.mobile`**. Standard-Store-Sprache **en-US**, zusätzli
 Deutsch. Texte stehen in [google-play.json](google-play.json).
 
 Der Herausgeber hat ein **neues persönliches Entwicklerkonto** bestätigt.
-Ein Google-Service-Konto für Play ist noch nicht eingerichtet. Für den späteren
-Produktionszugang ist deshalb der unten beschriebene geschlossene Test mit zwölf
+Das Google-Service-Konto ist in EAS hinterlegt und der API-Zugriff auf die App
+funktioniert. Für den späteren Produktionszugang ist der geschlossene Test mit zwölf
 Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
 
 ## Bereits vorbereitet
@@ -21,17 +21,28 @@ Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
   Heruntergeladen und geprüft: tatsächlicher Manifest-Paketname `com.talktome.mobile`,
   Versionscode 38, Version 1.0.0, ZIP-Integrität und JAR-Signatur. Lokale Datei im
   privaten Benutzerordner `Library/Application Support/Talktome/builds/`.
-  Noch kein AAB zu Google Play hochgeladen.
+  Das AAB ist zu Google Play hochgeladen; der von Google gelieferte SHA-256-Wert
+  entspricht der geprüften lokalen Datei. Build 38 ist in `internal` und `alpha`
+  jeweils als **Entwurf** gespeichert. `production` enthält keinen Release.
 - Deutsche und englische Texte mit geprüften Google-Längenlimits. Android-Texte
-  versprechen keine Apple-Watch-/Live-Activity-Funktionen.
+  versprechen keine Apple-Watch-/Live-Activity-Funktionen und sind in beiden
+  Play-Store-Sprachen gespeichert.
 - Kontakt: `talktome@platonstudio.de`; öffentliche Datenschutz-URL:
   `https://platonstudio.de/talktome/privacy/`.
+- Play-Icon (512 × 512) und lokalisierte Feature-Grafiken (1024 × 500) sind
+  in beiden Sprachen gespeichert. Dateien und reproduzierbarer Export liegen in
+  [google-play-assets](google-play-assets/manifest.json). Es sind Store-Grafiken,
+  keine nachgebildeten App-Screenshots.
 
-Die Vorbereitung bestätigt noch keine hochgeladenen Play-Console-Metadaten.
-Es ist noch kein Google-Service-Konto mit EAS verknüpft. Der Browserzugriff auf
-Play Console steht in dieser Sitzung nicht zur Verfügung.
+Support-E-Mail und Website sind in Play Console gespeichert. Beide Test-Releases
+bleiben Entwürfe und werden noch nicht an Tester ausgeliefert. Android-Screenshots,
+Testerfreigabe und die Fragebögen unter App-Inhalte sind noch zu erledigen. Der
+Browserzugriff auf Play Console steht in dieser Sitzung nicht zur Verfügung.
 
 ## Zugriff für automatisierte Uploads einrichten
+
+Die folgenden Verbindungsschritte sind bereits abgeschlossen und dienen als
+Referenz für spätere Änderungen.
 
 1. In [Google Cloud](https://console.cloud.google.com/projectcreate) ein eigenes
    Projekt erstellen oder ein vorhandenes Projekt auswählen.
@@ -64,10 +75,12 @@ Kontoverifizierungen bleiben Schritte im Browser.
 
 ## Ersten Test veröffentlichen und Link teilen
 
-1. App → Testen und veröffentlichen → Tests → Interner Test öffnen.
-2. Release erstellen und das **signierte Production-AAB für `com.talktome.mobile`**
-   hochladen. Play App Signing nach Googles Ablauf aktivieren. Die GitHub-APK mit
-   Paketnamen `.sideload` und Debug-Signierung ist dafür nicht geeignet.
+1. App → Testen und veröffentlichen → Tests → Interner Test oder Geschlossener
+   Test → Alpha öffnen. Für die erforderlichen zwölf Tester über 14 Tage den
+   **geschlossenen Test** verwenden.
+2. Den bereits vorbereiteten Release **1.0.0 (38)** öffnen. Er enthält das signierte
+   Production-AAB für `com.talktome.mobile`. Die GitHub-APK mit Paketnamen `.sideload`
+   und Debug-Signierung ist dafür nicht geeignet.
 3. Unter Tester eine E-Mail-Liste mit den Google-Konten der Tester oder eine
    Google-Gruppe hinterlegen. Feedback-Adresse: `talktome@platonstudio.de`.
 4. Release prüfen und für diesen Test-Track veröffentlichen. Anschließend unter
@@ -96,8 +109,9 @@ erhält nicht gleichzeitig Zugriff auf den offenen/geschlossenen Track.
 ## Vor geschlossenem Test bzw. öffentlichem Release
 
 - Store-Texte, Kategorie (Vorschlag: Produktivität), Kontakt und Datenschutz-Link.
-- Echte Android-Screenshots, Play-Icon und Feature-Grafik. Die vorhandenen
-  iPhone-/Watch-Screenshots nicht als Android-Screenshots verwenden.
+- Echte Android-Screenshots fehlen noch. Play-Icon und Feature-Grafiken sind bereits
+  hinterlegt. Die vorhandenen iPhone-/Watch-Screenshots nicht als Android-Screenshots
+  verwenden.
 - App-Zugriff: Anmeldung erforderlich; Review-Demo-Zugänge und Server-Anleitung
   ausschließlich in den privaten Zugriffshinweisen der Console hinterlegen.
 - Werbung: keine Werbeintegration im aktuellen Code. Keine Bezahlfunktionen.
