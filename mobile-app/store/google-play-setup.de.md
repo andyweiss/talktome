@@ -36,8 +36,17 @@ Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
 
 Support-E-Mail und Website sind in Play Console gespeichert. Beide Test-Releases
 bleiben Entwürfe und werden noch nicht an Tester ausgeliefert. Android-Screenshots,
-Testerfreigabe und die Fragebögen unter App-Inhalte sind noch zu erledigen. Der
+Testerfreigabe und der Abschluss der Fragebögen unter App-Inhalte sind noch zu prüfen. Der
 Browserzugriff auf Play Console steht in dieser Sitzung nicht zur Verfügung.
+Konkrete Antworten, englische Foreground-Service-Texte und der Aufnahmeplan stehen
+in [google-play-console-answers.de.md](google-play-console-answers.de.md).
+Die [Tester-Anleitung](google-play-beta-test.de.md) enthält eine Einladungsvorlage.
+Die Unterlagen sind vorbereitet, nicht als Console-Fragebögen gespeichert.
+
+Eine API-Freigabeprüfung ohne Commit bestätigt außerdem: Die App ist insgesamt
+noch im Entwurfszustand; Google erlaubt deshalb nur Entwurfs-Releases. Der
+geschlossene Test übernimmt die Produktions-Ländereinstellung, für die die API
+keine Länder liefert. Die weltweite Auswahl in der Console ausdrücklich prüfen.
 
 ## Zugriff für automatisierte Uploads einrichten
 
@@ -121,7 +130,9 @@ erhält nicht gleichzeitig Zugriff auf den offenen/geschlossenen Track.
   grundsätzlich mit; auch nur kurzzeitig verarbeitete Daten müssen im Fragebogen
   angegeben werden. Die Apple-Antwort „keine Datenerhebung“ nicht ungeprüft kopieren.
   Prüfen: Benutzerkennung/Anmeldung, Live-Audio, Server-Betriebsdaten und tatsächlich
-  eingesetzte SDKs; QR-Kamerabilder und Profile verbleiben lokal. Speicherfristen
+  eingesetzte SDKs. Unterstützte Remote-Panels erhalten außerdem Audio-Gerätekennungen,
+  Gerätenamen, Einstellungen und Sprechzustände. QR-Kamerabilder und lokal gespeicherte
+  Profile werden nicht als Bilder bzw. vollständige Profile hochgeladen. Speicherfristen
   bzw. Protokollierung bestimmen teilweise die jeweiligen Serverbetreiber.
   [Google: Datensicherheit](https://support.google.com/googleplay/android-developer/answer/10787469)
 - Android-Foreground-Service-Erklärung: `microphone`, `mediaPlayback` und optional
