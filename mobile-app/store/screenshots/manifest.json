@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "bd919d4",
+  "sourceCommit": "800fc9d",
   "appVersion": "1.0.0",
-  "buildNumber": "34",
+  "buildNumber": "35",
   "locales": [
     "en-GB",
     "de-DE"
@@ -18,17 +18,23 @@
       "files": [
         {
           "file": "iphone/01-operator.png",
-          "sha256": "19f5346444871f003afcc596677dcc1ac095c4a41d81a9528c826d92e3de3bf4"
+          "sha256": "a230cd60d47e53e379102536aabd123e20c982ef176237be7a40708fcbc232ae"
         },
         {
           "file": "iphone/02-audio-output.png",
-          "sha256": "fe4fb8549938f1f35a053cb5b80b417c2c924709de853f3a34eaf7e30684e41e"
+          "sha256": "64c45a6c4054433f23364ae647fc56aaddd910b6e8b4e98a22cadfaa0bb2cb39"
         },
         {
           "file": "iphone/03-audio-settings.png",
-          "sha256": "0729d1f09790d769ca2c6c81d58810e9c8b1e96e377cbdd32a19c139cac7eb4d"
+          "sha256": "895d53ce87a7899531692d7ce80760b4c269bac148b09780ba1d2c27bb6528c6"
+        },
+        {
+          "file": "iphone/04-watch-targets.png",
+          "sha256": "c306f9660a65240bb903b6ada98c7ccbcf9ebb1b5497e9dc51d3b2a3ff2dc61b"
         }
-      ]
+      ],
+      "sourceCommit": "800fc9d",
+      "buildNumber": "35"
     },
     {
       "device": "ipad",
@@ -50,7 +56,9 @@
           "file": "ipad/03-audio-settings.png",
           "sha256": "534e13985129bcac35020dee1d0fc36a51108e9d4e60fbdcfab5b7ee47cfd798"
         }
-      ]
+      ],
+      "sourceCommit": "bd919d4",
+      "buildNumber": "34"
     },
     {
       "device": "watch",
@@ -64,7 +72,9 @@
           "file": "watch/01-reply.png",
           "sha256": "512741f4d85a3abf54c4abd38299754e5aaf0bbbcc72fe6ab272f13eed9a972f"
         }
-      ]
+      ],
+      "sourceCommit": "bd919d4",
+      "buildNumber": "34"
     }
   ]
 }
