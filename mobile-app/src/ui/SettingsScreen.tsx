@@ -704,14 +704,14 @@ function WatchTargetsSettingsPage() {
         />
       </SettingsSection>
       <SettingsSection title="Choose targets">
-        <SettingsRow label="Reply" value="Latest caller" selected={selected?.includes(WATCH_REPLY_TARGET)} onPress={() => toggle(WATCH_REPLY_TARGET)} />
+        <SettingsRow multiple label="Reply" value="Latest caller" selected={selected?.includes(WATCH_REPLY_TARGET)} onPress={() => toggle(WATCH_REPLY_TARGET)} />
         {candidates.map(target => {
           const key = talkTargetIdentity(target);
-          return <SettingsRow key={key} label={target.label}
+          return <SettingsRow multiple key={key} label={target.label}
             value={target.type === 'conference' ? 'Conference' : session.canTalkTo(target) ? 'User' : 'Offline'}
             selected={selected?.includes(key)} onPress={() => toggle(key)} />;
         })}
-        {unavailable.map(key => <SettingsRow key={key} label="Unavailable target" value="Saved" selected onPress={() => toggle(key)} />)}
+        {unavailable.map(key => <SettingsRow multiple key={key} label="Unavailable target" value="Saved" selected onPress={() => toggle(key)} />)}
         {selected?.length === 0 ? <SettingsHint full="No targets selected. Choose one or more targets to use the Watch remote." compact="Choose at least one Watch target." /> : null}
       </SettingsSection>
     </>

@@ -161,6 +161,8 @@ private struct SingleTargetTalkView: View {
     .opacity(target.canTalk ? 1 : 0.5)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Talk to \(target.label)")
+    .accessibilityAddTraits(.isButton)
+    .accessibilityValue(target.canTalk ? "" : "Unavailable")
     .accessibilityHint(target.canTalk ? "Hold to talk; release to stop" : "Target unavailable")
     .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
       if pressing { remote.beginTalk(target) }

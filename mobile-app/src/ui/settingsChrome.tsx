@@ -111,18 +111,28 @@ export function SettingsRow({
   label,
   value,
   selected,
+  multiple = false,
   onPress,
 }: {
   label: string;
   value?: string;
   selected?: boolean;
+  multiple?: boolean;
   onPress?: () => void;
 }) {
   const styles = useSettingsStyles();
+  const { palette } = useSettingsTheme();
   const content = (
     <>
       <Text style={styles.rowLabel}>{label}</Text>
       {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+      {multiple ? (
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+          style={{ width: 20, height: 20, marginLeft: 10, borderWidth: 1, borderRadius: 4,
+            borderColor: selected ? palette.link : palette.muted, alignItems: 'center', justifyContent: 'center' }}>
+          {selected ? <Text style={{ color: palette.link, fontSize: 15, lineHeight: 18 }}>✓</Text> : null}
+        </View>
+      ) : null}
     </>
   );
   if (onPress) {
@@ -130,7 +140,8 @@ export function SettingsRow({
       <Pressable
         style={[styles.row, selected && styles.rowSelected]}
         onPress={onPress}
-        accessibilityRole="button"
+        accessibilityRole={multiple ? 'checkbox' : 'button'}
+        accessibilityState={multiple ? { checked: selected === true } : selected === undefined ? undefined : { selected }}
       >
         {content}
       </Pressable>
