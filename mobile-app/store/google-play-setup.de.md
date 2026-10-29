@@ -4,6 +4,11 @@ Stand: 29. Oktober 2026. App: **Talktome Intercom**,
 Paketname **`com.talktome.mobile`**. Standard-Store-Sprache **en-US**, zusätzlich
 Deutsch. Texte stehen in [google-play.json](google-play.json).
 
+Der Herausgeber hat ein **neues persönliches Entwicklerkonto** bestätigt.
+Ein Google-Service-Konto für Play ist noch nicht eingerichtet. Für den späteren
+Produktionszugang ist deshalb der unten beschriebene geschlossene Test mit zwölf
+Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
+
 ## Bereits vorbereitet
 
 - Android-Paketname und Production-AAB-Profil in der App-Konfiguration.
