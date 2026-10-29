@@ -47,8 +47,11 @@ another participant. Bluetooth accessories are optional.
 
 With the Watch app installed and the iPhone session connected, open Session →
 Accessories → Watch targets on iPhone. Select Reply and/or fixed targets. One
-selected target fills the Watch screen; several use a list. Hold a target on Watch
-to talk and release to stop. The Watch controls the iPhone session; audio remains
+selected target fills the Watch screen; two targets use fixed upper/lower
+buttons, and more targets use a list. Hold a target on Watch to talk and release
+to stop. In the full-screen view, swipe left while holding to lock talk; tap the
+locked target again to stop. With an external iPhone audio output selected, the
+ready beep plays through that output instead of the Watch. The Watch controls the iPhone session; audio remains
 on iPhone and its selected audio device.
 
 ### Backup connection

@@ -40,7 +40,7 @@ Die Store-Screenshots liegen unter
 und sind in den englischen und deutschen Store-Entwurf hochgeladen.
 Die öffentliche App-Oberfläche ist derzeit Englisch.
 
-Validierung: 405 mobile Tests, TypeScript, iOS-/Android-Bundle-Export und nativer
+Validierung: 423 mobile Tests, TypeScript, iOS-/Android-Bundle-Export und nativer
 Swift-Routing-Test erfolgreich. Simulator: Login und Datenschutz-Link vor/nach
 Anmeldung, Audio-Menü schließen und außerhalb antippen geprüft. Vorher/Nachher-
 Aufnahmen nach „Done“ sind einschließlich der Statusleiste pixelgleich. Die
@@ -50,8 +50,24 @@ Hardware; die veröffentlichte Geräte-App enthält diese Simulator-Anpassung ni
 
 Build 35: Watch-Auswahl (ein Ziel, mehrere Ziele, Reply und Wiederherstellung
 nach Neustart) im gekoppelten iPhone-/Watch-Simulator geprüft. Geänderte iPhone-Storebilder
-auf Build 35 aktualisiert, einschließlich der Watch-Auswahl; unveränderte
-Operator-, iPad- und Watch-Bilder bleiben mit Build-34-Herkunft im Manifest
-gekennzeichnet.
+auf Build 36 aktualisiert, einschließlich der Watch-Auswahl und des nativen
+iOS-Ausgabesymbols. Bilder der aufgegebenen eigenen Audioauswahl entfernt.
+Allgemeine iPad-/Watch-Bilder bleiben mit Build-34-Herkunft im Manifest gekennzeichnet.
 
 Englische und deutsche TestFlight-Testhinweise sind bei Build 34 und 35 hinterlegt.
+
+Build 36: Apples originales Ausgabebedienelement und System-Geräteliste
+wiederhergestellt. Alte gespeicherte App-/Panel-Ausgaben werden bei iOS-Anmeldung
+nicht über die aktuelle Systemroute gelegt. Die Systemliste wird nicht gefiltert;
+deren mögliche optische Wechsel bleiben iOS überlassen.
+
+Watch: Vollbild unterstützt links Wischen zum Einrasten und Antippen zum Stoppen.
+Zwei Ziele verwenden feste obere/untere Tasten, weitere Ziele eine Liste. Bei
+gewählter externer iPhone-Ausgabe spielt der Bereitschaftston auf dieser Ausgabe
+und nicht auf Watch. Phone und Watch müssen gemeinsam aktualisiert werden.
+
+Die Zweierdarstellung und der Start-/Lock-/Loslass-/Stop-Protokollablauf wurden
+im gekoppelten Simulator geprüft. Eine zusätzliche temporäre Watch-Teststeuerung
+übte die Kommandos aus; sie ist nicht im Gerätebuild enthalten. Physische
+Swipe-Gesten, AirPods-Wechsel, Headset-Ton und das iOS-Systemmenü sind auf echten
+Geräten zu prüfen.
