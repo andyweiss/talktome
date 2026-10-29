@@ -72,7 +72,26 @@ describe('foreground service policy', () => {
     );
     const pluginValue = plugin.match(/'android:stopWithTask': '([^']+)'/)?.[1];
     const manifestValue = manifest.match(/android:stopWithTask="([^"]+)"/)?.[1];
-    expect(pluginValue).toBe('true');
-    expect(manifestValue).toBe('true');
+    // `true` would stop the service without onTaskRemoved, and the process
+    // stayed connected after a recents swipe.
+    expect(pluginValue).toBe('false');
+    expect(manifestValue).toBe('false');
+  });
+
+  it('disconnects and ends the process when the recents task is removed', () => {
+    const service = readFileSync(
+      resolve(
+        __dirname,
+        '../../modules/foreground-service/android/src/main/java/expo/modules/talktomefgs/TalkToMeForegroundService.kt',
+      ),
+      'utf8',
+    );
+    const handler = service.slice(service.indexOf('override fun onTaskRemoved'));
+    const body = handler.slice(0, handler.indexOf('\n  }\n'));
+    const disconnect = body.indexOf('onStopRequested()');
+    const kill = body.indexOf('Process.killProcess(Process.myPid())');
+    expect(disconnect).toBeGreaterThan(0);
+    expect(kill).toBeGreaterThan(disconnect);
+    expect(body).toContain('TASK_REMOVED_EXIT_DELAY_MS');
   });
 });
