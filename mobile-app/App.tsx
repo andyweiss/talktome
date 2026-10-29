@@ -7,6 +7,7 @@ import {
   type StackPresentationTypes,
 } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 import { session, useSessionStore } from './src/session/store';
@@ -16,7 +17,7 @@ import {
   tallyFrameStrokeRadius,
   tallyFrameStrokeWidth,
 } from './src/protocol';
-import { androidSafeArea } from './src/ui/androidSafeArea';
+import { useAndroidSafeArea } from './src/ui/androidSafeArea';
 import { LoginScreen } from './src/ui/LoginScreen';
 import { OperatorScreen } from './src/ui/OperatorScreen';
 import { PausedScreen } from './src/ui/PausedScreen';
@@ -28,6 +29,15 @@ import { settingsPalette, settingsScheme } from './src/ui/settingsTheme';
 import { colors } from './src/ui/theme';
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
+  const safeArea = useAndroidSafeArea();
   const hydrated = useSessionStore((state) => state.hydrated);
   const identity = useSessionStore((state) => state.identity);
   const operatorReady = useSessionStore((state) => state.operatorReady);
@@ -87,7 +97,7 @@ export default function App() {
   let pages: Page[] = [screen];
   if (loginOverProfiles) {
     pages = ['profiles', 'login'];
-  } else if (sheetOpen) {
+  } else if (sheetOpen && Platform.OS === 'ios') {
     pages = ['operator', 'sheet'];
   }
 
@@ -111,7 +121,7 @@ export default function App() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={[styles.safe, androidSafeArea]}>
+      <SafeAreaView style={[styles.safe, safeArea]}>
         <StatusBar style="light" />
         <ScreenStack style={styles.stack}>
           {pages.map((page, index) => {
@@ -154,6 +164,18 @@ export default function App() {
             );
           })}
         </ScreenStack>
+        {sheetOpen && Platform.OS === 'android' ? (
+          // Android: a plain overlay. Taps did not reach the settings inside a native
+          // react-native-screens modal on several phones (thepoison606/talktome#186).
+          <View
+            style={[
+              styles.androidSheet,
+              { top: safeArea.paddingTop ?? 0, bottom: safeArea.paddingBottom ?? 0, backgroundColor: sheetColor },
+            ]}
+          >
+            <SessionSheet onClose={closeSessionSheet} />
+          </View>
+        ) : null}
       </SafeAreaView>
       {identity && operatorReady && tallyColor ? <TallyScreenFrame color={tallyColor} /> : null}
     </View>
@@ -229,6 +251,12 @@ const styles = StyleSheet.create({
   },
   stack: {
     flex: 1,
+  },
+  androidSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 30,
   },
   page: {
     backgroundColor: colors.bgBottom,

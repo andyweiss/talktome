@@ -1,13 +1,9 @@
-import { Platform, StatusBar, type ViewStyle } from 'react-native';
+import { Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/**
- * Extra insets for Android status / gesture bars. RN SafeAreaView only insets iOS,
- * so Android content sits under the clock, cutout, and home indicator.
- */
-export const androidSafeArea: ViewStyle =
-  Platform.OS === 'android'
-    ? {
-        paddingTop: (StatusBar.currentHeight ?? 24) + 8,
-        paddingBottom: 28,
-      }
-    : {};
+import { androidSafeAreaStyle, type AndroidSafeArea } from './androidSafeAreaStyle';
+
+export function useAndroidSafeArea(): AndroidSafeArea {
+  const insets = useSafeAreaInsets();
+  return androidSafeAreaStyle(Platform.OS, insets, StatusBar.currentHeight);
+}

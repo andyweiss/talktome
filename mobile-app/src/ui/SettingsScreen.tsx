@@ -129,6 +129,35 @@ export function SessionSheet({ onClose }: { onClose: () => void }) {
     onOpenDevice: (id: string) => push({ kind: 'ptt-device', id }),
   };
 
+  const renderPage = (page: SettingsPage, index: number) => (
+    <SettingsSheet
+      {...pageActions}
+      header={headerForPage(
+        page,
+        store.bleBindings.find((item) => page.kind === 'ptt-device' && item.id === page.id)?.name,
+      )}
+      page={page}
+      onBack={index > 0 ? back : undefined}
+      scrollEnabled={!sliderDragging}
+      onDimSliding={setSliderDragging}
+    />
+  );
+
+  // Android: plain views, current page only. Inside react-native-screens the
+  // sheet ignored every tap on several phones (thepoison606/talktome#186);
+  // the hardware back button above still goes up one page.
+  if (Platform.OS === 'android') {
+    const index = path.length - 1;
+    const page = path[index] ?? ROOT_PATH[0] ?? { kind: 'session' };
+    return (
+      <SettingsThemeProvider scheme={scheme}>
+        <View key={pageKey(page)} style={[stackStyles.stack, { backgroundColor: sheetColor }]}>
+          {renderPage(page, index)}
+        </View>
+      </SettingsThemeProvider>
+    );
+  }
+
   const stackView = (
     <ScreenStack style={stackStyles.stack}>
       {/* Empty page under Session: swiping Session away lands here and closes the sheet. */}
@@ -151,17 +180,7 @@ export function SessionSheet({ onClose }: { onClose: () => void }) {
           onDismissed={() => dismissedAt(index)}
           contentStyle={{ backgroundColor: sheetColor }}
         >
-          <SettingsSheet
-            {...pageActions}
-            header={headerForPage(
-              page,
-              store.bleBindings.find((item) => page.kind === 'ptt-device' && item.id === page.id)?.name,
-            )}
-            page={page}
-            onBack={index > 0 ? back : undefined}
-            scrollEnabled={!sliderDragging}
-            onDimSliding={setSliderDragging}
-          />
+          {renderPage(page, index)}
         </ScreenStackItem>
       ))}
     </ScreenStack>
