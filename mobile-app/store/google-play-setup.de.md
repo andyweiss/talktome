@@ -16,10 +16,12 @@ Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
   Application Identifier `com.talktome.mobile`, Build Credentials „Talktome Play Upload“.
   Dieser Schlüssel ist keine JSON-Datei für die Google-API. Er signiert das AAB.
 - Einreichungsprofil: Track `internal`, Release-Status `draft`.
-- Production-AAB 1.0.0 (38) über EAS gestartet:
+- Production-AAB 1.0.0 (38) über EAS erfolgreich gebaut:
   [Build-Status](https://expo.dev/accounts/talktomecomm/projects/talktome/builds/58cf15c4-d457-497a-8896-0714afe310d3).
-  Beim Vorbereiten dieser Anleitung stand er in der Warteschlange; noch kein AAB
-  zu Google Play hochgeladen.
+  Heruntergeladen und geprüft: tatsächlicher Manifest-Paketname `com.talktome.mobile`,
+  Versionscode 38, Version 1.0.0, ZIP-Integrität und JAR-Signatur. Lokale Datei im
+  privaten Benutzerordner `Library/Application Support/Talktome/builds/`.
+  Noch kein AAB zu Google Play hochgeladen.
 - Deutsche und englische Texte mit geprüften Google-Längenlimits. Android-Texte
   versprechen keine Apple-Watch-/Live-Activity-Funktionen.
 - Kontakt: `talktome@platonstudio.de`; öffentliche Datenschutz-URL:
