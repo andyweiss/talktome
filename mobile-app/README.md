@@ -17,7 +17,8 @@ The app includes:
 - Apple Watch talk remote; audio stays on the iPhone. Under Accessories → Watch targets,
   choose Reply and/or fixed talk targets per profile and production. One chosen target
   fills the Watch screen; two targets use fixed upper/lower buttons, and more use a list.
-  In full screen, hold and swipe left to lock talk; tap again to stop. The ready
+  Hold and swipe left to lock talk in any layout; tap the full-screen display to stop.
+  While talking, the target and swipe hint sit near the top of the full-screen display. The ready
   beep plays through the selected external iPhone audio output, or on Watch when
   no external output is selected. The default is all targets.
 - Per-host certificate pinning for self-hosted servers with self-signed TLS.

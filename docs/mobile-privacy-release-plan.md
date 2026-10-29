@@ -71,3 +71,14 @@ im gekoppelten Simulator geprüft. Eine zusätzliche temporäre Watch-Teststeuer
 übte die Kommandos aus; sie ist nicht im Gerätebuild enthalten. Physische
 Swipe-Gesten, AirPods-Wechsel, Headset-Ton und das iOS-Systemmenü sind auf echten
 Geräten zu prüfen.
+
+Build 36 ist von Apple verarbeitet und in der internen TestFlight-Gruppe „Team“
+verfügbar. Englische und deutsche Testhinweise sind hinterlegt. Die aktualisierten
+iPhone-Bilder sind in beiden Store-Sprachen vollständig verarbeitet.
+
+Build 37 vereinheitlicht die Watch-Halte-/Swipe-Geste für Einzelziel, Zweieransicht
+und Liste. Jede Sprechaktion erhält die Vollbildanzeige; „Talking · Ziel“ und
+Swipe-Hinweis stehen im oberen Bildschirmbereich. Die Zweieransicht nutzt die
+vertikale Fläche bis an die Bildschirmränder. Das eingerastete Vollbild kann
+überall zum Stoppen angetippt werden. Zusätzliche native Swift-Gestentests prüfen
+Wischrichtung, Abstand am linken Rand, Abbruch und Loslassen nach dem Einrasten.
