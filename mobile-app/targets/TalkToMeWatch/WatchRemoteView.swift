@@ -51,7 +51,7 @@ struct WatchRemoteView: View {
           }
         }
         Section {
-          ForEach(remote.snapshot.targets) { target in
+          ForEach(remote.snapshot.targets.filter { !$0.pinned }) { target in
             HoldTalkRow(target: target, asReply: false)
           }
         }
