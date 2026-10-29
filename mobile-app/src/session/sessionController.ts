@@ -58,6 +58,7 @@ import {
   type SavedProfile,
 } from './remembered';
 import { canAnnounceConnectionRecovery, createConnectionCues, transportReportsLoss } from './connectionCues';
+import { normalizeWatchTargetKeys } from '../watch/selection';
 import { mainButtonStorageKey } from './mainButton';
 import { targetOrderPayload } from './targetOrder';
 import { createServerHeartbeat } from './serverHeartbeat';
@@ -167,7 +168,7 @@ export class SessionController {
       loadAudioPreferences(),
       loadBlePreferences(),
       loadConferenceListen(),
-      loadOperatorAudioOverrides(),
+      loadOperatorAudioOverrides(Platform.OS),
       hydrateTlsPins(),
     ]);
     this.operatorAudioOverrides = operatorAudioOverrides;
@@ -188,6 +189,7 @@ export class SessionController {
       lockMultipleTargets: bundle.lockMultipleTargets ?? false,
       edgeTalkAffordance: bundle.edgeTalkAffordance !== false,
       mainButtonTargets: bundle.mainButtonTargets ?? {},
+      watchTargetSelections: bundle.watchTargetSelections ?? {},
       bigMainButton: bundle.bigMainButton === true,
       audioSessionAvailable: audioSessionAvailable(),
       capabilityReason: this.background.capabilityReason({
@@ -690,6 +692,7 @@ export class SessionController {
       lockMultipleTargets: next.lockMultipleTargets,
       edgeTalkAffordance: next.edgeTalkAffordance,
       mainButtonTargets: next.mainButtonTargets,
+      watchTargetSelections: next.watchTargetSelections,
       bigMainButton: next.bigMainButton,
       productionId: next.productionId,
       productionName: next.productionName,
@@ -775,6 +778,7 @@ export class SessionController {
       lockMultipleTargets: this.lockMultipleTargetsExplicit ? state.lockMultipleTargets : undefined,
       edgeTalkAffordance: state.edgeTalkAffordance,
       mainButtonTargets: state.mainButtonTargets,
+      watchTargetSelections: state.watchTargetSelections,
       bigMainButton: state.bigMainButton,
     };
   }
@@ -810,6 +814,17 @@ export class SessionController {
       delete mainButtonTargets[key];
     }
     useSessionStore.setState({ mainButtonTargets });
+    this.persistLayout();
+    this.background.syncPresence();
+  }
+
+  setWatchTargets(keys: string[] | null): void {
+    const state = useSessionStore.getState();
+    const scope = mainButtonStorageKey(state.activeProfileId, state.productionId);
+    const watchTargetSelections = { ...state.watchTargetSelections };
+    if (keys === null) delete watchTargetSelections[scope];
+    else watchTargetSelections[scope] = normalizeWatchTargetKeys(keys);
+    useSessionStore.setState({ watchTargetSelections });
     this.persistLayout();
     this.background.syncPresence();
   }

@@ -13,7 +13,9 @@ The app includes:
 - Background audio, native route selection and Android foreground service.
 - BLE push-to-talk accessories, including PTT-Z01 and Herda HB980-Plus profiles.
 - iOS Live Activities, widgets and shortcuts; Android session widget.
-- Apple Watch talk remote; audio stays on the iPhone.
+- Apple Watch talk remote; audio stays on the iPhone. Under Accessories → Watch targets,
+  choose Reply and/or fixed talk targets per profile and production. One chosen target
+  fills the Watch screen; multiple targets use the list. The default is all targets.
 - Per-host certificate pinning for self-hosted servers with self-signed TLS.
 
 ## Development

@@ -37,8 +37,10 @@ struct WatchRemoteView: View {
       StatusScreen(
         title: remote.status,
         detail: "No talk targets",
-        hint: "Join a production with conferences or online users you can talk to."
+        hint: "Choose Watch targets in Accessories on iPhone. Saved targets may be unavailable in this production."
       )
+    } else if remote.snapshot.singleTargetMode, let target = remote.snapshot.targets.first {
+      SingleTargetTalkView(target: target)
     } else {
       List {
         header
@@ -93,7 +95,7 @@ private struct HoldTalkRow: View {
         .font(.headline)
         .foregroundStyle(ttmText)
         .lineLimit(2)
-      Text("Hold to talk")
+      Text(target.canTalk ? "Hold to talk" : "Unavailable")
         .font(.caption2)
         .foregroundStyle(ttmMuted)
     }
@@ -103,6 +105,7 @@ private struct HoldTalkRow: View {
     .contentShape(Rectangle())
     // maximumDistance .infinity keeps the press alive while the finger drifts;
     // talk only stops when the finger lifts. Scroll is disabled while holding.
+    .opacity(target.canTalk ? 1 : 0.45)
     .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
       if pressing {
         remote.beginTalk(target)
@@ -120,6 +123,49 @@ private struct HoldTalkRow: View {
       return ttmSpeaking.opacity(0.22)
     }
     return Color.white.opacity(0.08)
+  }
+}
+
+private struct SingleTargetTalkView: View {
+  @EnvironmentObject private var remote: WatchRemoteSession
+  let target: WatchRemoteTarget
+
+  var body: some View {
+    VStack(spacing: 8) {
+      HStack(spacing: 5) {
+        Circle().fill(remote.reachable ? ttmAccent : Color.orange).frame(width: 6, height: 6)
+        Text(remote.reachable ? "Live" : "iPhone away").font(.caption2)
+      }
+      .foregroundStyle(ttmMuted)
+      Spacer(minLength: 4)
+      Text(target.pinned ? "Reply" : target.kindLabel)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(target.highlighted ? ttmSpeaking : ttmMuted)
+      Text(target.label)
+        .font(.title2.weight(.bold))
+        .multilineTextAlignment(.center)
+        .lineLimit(3)
+        .minimumScaleFactor(0.65)
+        .foregroundStyle(ttmText)
+      Spacer(minLength: 4)
+      Image(systemName: "mic.fill").font(.title2).foregroundStyle(ttmAccent)
+      Text(target.canTalk ? "Hold to talk" : "Unavailable")
+        .font(.caption)
+        .foregroundStyle(ttmMuted)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(target.highlighted ? ttmSpeaking.opacity(0.18) : ttmBg)
+    .contentShape(Rectangle())
+    .opacity(target.canTalk ? 1 : 0.5)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Talk to \(target.label)")
+    .accessibilityHint(target.canTalk ? "Hold to talk; release to stop" : "Target unavailable")
+    .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, pressing: { pressing in
+      if pressing { remote.beginTalk(target) }
+      else { remote.endTalk(target) }
+    }, perform: {})
   }
 }
 

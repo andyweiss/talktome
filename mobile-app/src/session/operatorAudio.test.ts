@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const storage = vi.hoisted(() => ({ getItem: vi.fn(), setItem: vi.fn() }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: storage }));
+beforeEach(() => { storage.getItem.mockReset(); storage.setItem.mockReset(); });
 
 import {
   DEFAULT_OPERATOR_AUDIO,
   dimDbFromSliderPosition,
   feedDuckingFactor,
   normalizeOperatorAudio,
+  loadOperatorAudioOverrides,
   resolveOperatorAudio,
   shouldDuckFeeds,
   sliderPositionFromDimDb,
@@ -92,5 +97,29 @@ describe('operatorAudio', () => {
         incomingAddressed: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe('saved audio output migration', () => {
+  const saved = { audioRouteId: 'receiver', feedDimDb: -12, playConnectionSounds: false };
+
+  it('migrates the retired iOS receiver to speaker and preserves other preferences', async () => {
+    storage.getItem.mockResolvedValue(JSON.stringify(saved));
+    const migrated = { ...saved, audioRouteId: 'speaker' };
+    expect(await loadOperatorAudioOverrides('ios')).toEqual(migrated);
+    expect(storage.setItem.mock.calls[0]![0]).toBe('talktome.operator-audio');
+    expect(JSON.parse(storage.setItem.mock.calls[0]![1])).toEqual(migrated);
+  });
+
+  it('keeps Android receiver settings', async () => {
+    storage.getItem.mockResolvedValue(JSON.stringify(saved));
+    expect(await loadOperatorAudioOverrides('android')).toEqual(saved);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('keeps migrated preferences usable when persisting the migration fails', async () => {
+    storage.getItem.mockResolvedValue(JSON.stringify(saved));
+    storage.setItem.mockRejectedValue(new Error('Storage unavailable'));
+    expect(await loadOperatorAudioOverrides('ios')).toEqual({ ...saved, audioRouteId: 'speaker' });
   });
 });

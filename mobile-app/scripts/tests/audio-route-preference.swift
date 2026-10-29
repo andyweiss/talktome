@@ -73,6 +73,12 @@ enum AudioRoutePreferenceTests {
       reason: .override, currentId: "port:airpods", preferredStillAvailable: true
     ))
     precondition(preference.preferredId == "port:airpods")
+    // Legacy settings and system receiver selections fall back to speaker.
+    preference.preferredId = "receiver"
+    precondition(preference.preferredId == "speaker")
+    preference.beginPicker()
+    preference.endPicker(currentId: "receiver")
+    precondition(preference.preferredId == "speaker")
     print("Native audio route preference tests passed.")
   }
 }

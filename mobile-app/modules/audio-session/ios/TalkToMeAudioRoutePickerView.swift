@@ -22,7 +22,7 @@ public final class TalkToMeAudioRoutePickerView: ExpoView, AVRoutePickerViewDele
     picker.backgroundColor = .clear
     picker.isOpaque = false
     picker.accessibilityLabel = "Audio output"
-    picker.accessibilityHint = "Choose speaker, iPhone, or a headset"
+    picker.accessibilityHint = "Choose speaker or a headset"
     addSubview(picker)
   }
 

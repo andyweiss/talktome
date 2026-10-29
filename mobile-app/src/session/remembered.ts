@@ -1,3 +1,4 @@
+import { readWatchTargetSelections } from '../watch/selection';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
@@ -56,6 +57,7 @@ export async function loadProfileBundle(): Promise<ProfileBundle> {
         edgeTalkAffordance:
           typeof parsed.edgeTalkAffordance === 'boolean' ? parsed.edgeTalkAffordance : undefined,
         mainButtonTargets: readMainButtonTargets(parsed.mainButtonTargets),
+        watchTargetSelections: readWatchTargetSelections(parsed.watchTargetSelections),
         bigMainButton: parsed.bigMainButton === true,
       };
     } catch {

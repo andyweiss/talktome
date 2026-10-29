@@ -23,7 +23,7 @@ export function AudioRouteButton({ onPress }: { onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Audio output ${describeAudioRouteKind(kind)}`}
-      accessibilityHint="Choose speaker, phone, or headset"
+      accessibilityHint={Platform.OS === 'ios' ? 'Choose speaker or headset' : 'Choose speaker, phone, or headset'}
       onPress={onPress}
       style={styles.button}
     >

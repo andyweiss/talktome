@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const native = vi.hoisted(() => ({
+  os: 'ios',
   selectAudioRoute: vi.fn(),
   currentAudioRoute: vi.fn(),
 }));
+vi.mock('react-native', () => ({ Platform: { get OS() { return native.os; } } }));
 vi.mock('expo-modules-core', () => ({ requireNativeModule: () => native }));
 
-import { selectAudioRoute } from './routes';
+import { emptyAudioRouteSnapshot, readAudioRouteSnapshot, selectAudioRoute } from './routes';
 
 function snapshot(currentId: string, ids = ['speaker', 'receiver', 'port:airpods']) {
   return {
@@ -17,12 +19,33 @@ function snapshot(currentId: string, ids = ['speaker', 'receiver', 'port:airpods
 
 beforeEach(() => {
   vi.useFakeTimers();
+  native.os = 'ios';
   native.selectAudioRoute.mockReset();
   native.currentAudioRoute.mockReset().mockReturnValue(snapshot('port:airpods'));
 });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe('audio route confirmation', () => {
+  it('omits the iPhone receiver from native and fallback lists on iOS', () => {
+    expect(readAudioRouteSnapshot().routes.map(route => route.id)).toEqual(['speaker', 'port:airpods']);
+    expect(emptyAudioRouteSnapshot().routes.map(route => route.id)).toEqual(['speaker']);
+  });
+
+  it('maps legacy iOS receiver requests to speaker without a false selection failure', async () => {
+    native.selectAudioRoute.mockResolvedValue(snapshot('speaker'));
+    expect((await selectAudioRoute('receiver')).currentId).toBe('speaker');
+    expect(native.selectAudioRoute).toHaveBeenCalledWith('speaker');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('preserves receiver support on Android', async () => {
+    native.os = 'android';
+    native.selectAudioRoute.mockResolvedValue(snapshot('receiver'));
+    expect(emptyAudioRouteSnapshot().routes.some(route => route.id === 'receiver')).toBe(true);
+    expect((await selectAudioRoute('receiver')).currentId).toBe('receiver');
+    expect(native.selectAudioRoute).toHaveBeenCalledWith('receiver');
+  });
+
   it('returns an already confirmed route without a delay', async () => {
     native.selectAudioRoute.mockResolvedValue(snapshot('speaker'));
     expect((await selectAudioRoute('speaker')).currentId).toBe('speaker');

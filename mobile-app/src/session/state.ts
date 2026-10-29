@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { WatchTargetSelections } from '../watch/selection';
 
 import type { CertificateProbe } from '../servers/tlsTrust';
 import type {
@@ -33,6 +34,7 @@ export type SessionUiState = {
   edgeTalkAffordance: boolean;
   /** Empty string means Reply. A talk-target identity pins the bottom button. */
   mainButtonTargets: Record<string, string>;
+  watchTargetSelections: WatchTargetSelections;
   bigMainButton: boolean;
   replyTarget: TalkTarget | null;
   loginOptions: LoginOptions | null;
@@ -129,6 +131,7 @@ export const initialState: SessionUiState = {
   lockMultipleTargets: false,
   edgeTalkAffordance: true,
   mainButtonTargets: {},
+  watchTargetSelections: {},
   bigMainButton: false,
   replyTarget: null,
   loginOptions: null,

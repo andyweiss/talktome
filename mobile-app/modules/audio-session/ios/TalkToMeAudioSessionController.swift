@@ -238,19 +238,6 @@ final class TalkToMeAudioSessionController {
 
   private func applyPreferredRoute(_ session: AVAudioSession) throws {
     guard !routePreference.isPickerPresented else { return }
-    if preferredRouteId == "receiver" {
-      // Clearing the speaker override alone still selects the speaker when
-      // defaultToSpeaker is set. The receiver needs the category default too.
-      if session.categoryOptions.contains(.defaultToSpeaker) {
-        try session.setCategory(session.category, mode: session.mode,
-                                options: session.categoryOptions.subtracting(.defaultToSpeaker))
-      }
-      try preferBuiltInMicrophone(session)
-      if !session.currentRoute.outputs.contains(where: { $0.portType == .builtInReceiver }) {
-        try session.overrideOutputAudioPort(.none)
-      }
-      return
-    }
     if preferredRouteId.hasPrefix("port:") {
       let uid = String(preferredRouteId.dropFirst(5))
       if let port = session.availableInputs?.first(where: { $0.uid == uid }) {
@@ -284,9 +271,6 @@ final class TalkToMeAudioSessionController {
     var routes: [[String: Any]] = [
       routeEntry(id: "speaker", label: "Speaker", kind: "speaker", selected: currentId == "speaker"),
     ]
-    if UIDevice.current.userInterfaceIdiom == .phone {
-      routes.append(routeEntry(id: "receiver", label: "iPhone", kind: "receiver", selected: currentId == "receiver"))
-    }
     for input in session.availableInputs ?? [] {
       guard let kind = routeKind(for: input.portType), kind != "other" else {
         continue
@@ -324,7 +308,7 @@ final class TalkToMeAudioSessionController {
        session.availableInputs?.contains(where: { "port:\($0.uid)" == preferredRouteId }) == true {
       return preferredRouteId
     }
-    return preferredRouteId == "receiver" ? "receiver" : "speaker"
+    return "speaker"
   }
 
   private func routeKind(for portType: AVAudioSession.Port) -> String? {
@@ -332,7 +316,7 @@ final class TalkToMeAudioSessionController {
     case .builtInSpeaker:
       return "speaker"
     case .builtInReceiver, .builtInMic:
-      return "receiver"
+      return "other"
     case .bluetoothHFP, .bluetoothA2DP, .bluetoothLE:
       return "bluetooth"
     case .headphones, .headsetMic:

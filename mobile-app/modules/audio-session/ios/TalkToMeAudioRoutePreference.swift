@@ -9,7 +9,11 @@ struct TalkToMeAudioRoutePreference {
     case routeConfigurationChange = 8
   }
 
-  var preferredId = "speaker"
+  private var storedPreferredId = "speaker"
+  var preferredId: String {
+    get { storedPreferredId }
+    set { storedPreferredId = newValue.isEmpty || newValue == "receiver" ? "speaker" : newValue }
+  }
   private(set) var isPickerPresented = false
 
   mutating func beginPicker() {

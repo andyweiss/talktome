@@ -146,13 +146,22 @@ export function shouldDuckFeeds(input: {
  * that predate per-key tracking stored the full object; all of those keys
  * count as explicit choices, which keeps them stable under server defaults.
  */
-export async function loadOperatorAudioOverrides(): Promise<Partial<OperatorAudioSettings>> {
+export async function loadOperatorAudioOverrides(platform?: string): Promise<Partial<OperatorAudioSettings>> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) {
     return {};
   }
   try {
-    return pickOperatorAudioKeys(JSON.parse(raw) as Record<string, unknown>);
+    const overrides = pickOperatorAudioKeys(JSON.parse(raw) as Record<string, unknown>);
+    if (platform === 'ios' && overrides.audioRouteId === 'receiver') {
+      overrides.audioRouteId = 'speaker';
+      try {
+        await saveOperatorAudioOverrides(overrides);
+      } catch {
+        // Keep the migrated in-memory settings even if storage is unavailable.
+      }
+    }
+    return overrides;
   } catch {
     return {};
   }

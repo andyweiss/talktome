@@ -97,6 +97,7 @@ import { talkTargetIdentity, type TalkTarget } from '../protocol';
 import { sessionPresence, presenceNotification } from './presence';
 import { publishSessionPresence, subscribeAppTerminating, subscribeDisconnectShortcut, subscribeTalkShortcut } from './presenceNative';
 import { shouldDisconnectForAppStateChange } from './presenceShutdown';
+import { mainButtonStorageKey } from './mainButton';
 import { buildWatchRemoteSnapshot } from '../watch/snapshot';
 import { publishWatchRemote, subscribeWatchRemote, ackWatchTalk, type WatchRemoteCommand } from '../watch/native';
 import { bleFieldsFromSelection, bleSelectionFromState, useSessionStore } from './state';
@@ -950,7 +951,9 @@ export class BackgroundCoordinator {
       return;
     }
     const target = this.resolveWatchTarget(command);
-    if (!useSessionStore.getState().operatorReady || !target) {
+    const allowed = target && this.watchRemoteSnapshot().targets.some(row =>
+      row.key === talkTargetIdentity(target) && row.canTalk);
+    if (!useSessionStore.getState().operatorReady || !target || !allowed) {
       ackWatchTalk({ key: command.key, talking: false });
       return;
     }
@@ -1034,6 +1037,7 @@ export class BackgroundCoordinator {
   private watchRemoteSnapshot() {
     const state = useSessionStore.getState();
     return buildWatchRemoteSnapshot({
+      selectedTargetKeys: state.watchTargetSelections[mainButtonStorageKey(state.activeProfileId, state.productionId)],
       operatorReady: state.operatorReady,
       username: state.username,
       productionName: state.productionName,

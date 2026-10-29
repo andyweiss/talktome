@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { requireNativeModule } from 'expo-modules-core';
 
 export type AudioRouteKind = 'speaker' | 'receiver' | 'bluetooth' | 'wired' | 'usb' | 'other';
@@ -65,7 +66,7 @@ function parseRoute(value: unknown): AudioRoute | null {
   }
   const item = value as Record<string, unknown>;
   const id = asString(item.id);
-  if (!id) {
+  if (!id || (Platform.OS === 'ios' && (id === 'receiver' || item.kind === 'receiver'))) {
     return null;
   }
   return {
@@ -95,7 +96,7 @@ export function emptyAudioRouteSnapshot(): AudioRouteSnapshot {
   return {
     routes: [
       { id: 'speaker', label: 'Speaker', kind: 'speaker', selected: true },
-      { id: 'receiver', label: 'Phone', kind: 'receiver', selected: false },
+      ...(Platform.OS === 'ios' ? [] : [{ id: 'receiver', label: 'Phone', kind: 'receiver' as const, selected: false }]),
     ],
     currentId: 'speaker',
     inputLabel: 'Unknown',
@@ -122,11 +123,16 @@ export function readAudioRouteSnapshot(): AudioRouteSnapshot {
   });
 }
 
+export function normalizeAudioRouteId(id: string): string {
+  return Platform.OS === 'ios' && id === 'receiver' ? 'speaker' : id;
+}
+
 export async function selectAudioRoute(id: string): Promise<AudioRouteSnapshot> {
   const native = loadNative();
   if (!native?.selectAudioRoute) {
     return readAudioRouteSnapshot();
   }
+  id = normalizeAudioRouteId(id);
   const result = await native.selectAudioRoute(id);
   let snapshot = result && typeof result === 'object'
     ? parseSnapshot(result, id)

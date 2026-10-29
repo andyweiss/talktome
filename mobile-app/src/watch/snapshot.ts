@@ -5,6 +5,7 @@ import {
   type PeerSession,
   type TalkTarget,
 } from '../protocol';
+import { selectedWatchTargets, WATCH_REPLY_TARGET } from './selection';
 import { incomingHighlightsTarget } from '../talk/replyTarget';
 
 export type WatchRemoteTarget = {
@@ -18,6 +19,7 @@ export type WatchRemoteTarget = {
 };
 
 export type WatchRemoteSnapshot = {
+  singleTargetMode: boolean;
   connected: boolean;
   username: string;
   productionName: string;
@@ -32,6 +34,7 @@ export function watchTalkCandidates(targets: TalkTarget[], peers: PeerSession[])
 }
 
 export function buildWatchRemoteSnapshot(input: {
+  selectedTargetKeys?: string[];
   operatorReady: boolean;
   username: string;
   productionName?: string | null;
@@ -42,7 +45,11 @@ export function buildWatchRemoteSnapshot(input: {
   talkingTargets: TalkTarget[];
   incoming: IncomingTalkState;
 }): WatchRemoteSnapshot {
-  const talkable = watchTalkCandidates(input.targets, input.peers);
+  const selection = input.selectedTargetKeys;
+  const talkable = selection === undefined
+    ? watchTalkCandidates(input.targets, input.peers)
+    : selectedWatchTargets(input.targets, selection, input.replyTarget);
+  const includeReply = selection === undefined || selection.includes(WATCH_REPLY_TARGET);
   const replyKey = input.replyTarget ? talkTargetIdentity(input.replyTarget) : '';
   const talkingTargetKey = input.talkingTargets[0] ? talkTargetIdentity(input.talkingTargets[0]) : '';
   const rows = talkable.map((target) => {
@@ -52,13 +59,14 @@ export function buildWatchRemoteSnapshot(input: {
       type: target.type,
       id: String(target.id),
       label: target.label,
-      canTalk: target.canTalk,
-      pinned: Boolean(replyKey) && key === replyKey,
+      canTalk: canTalkToTarget(target, input.peers),
+      pinned: includeReply && Boolean(replyKey) && key === replyKey,
       highlighted: input.incoming.addressedNow.some((entry) => incomingHighlightsTarget(entry, target)),
     } satisfies WatchRemoteTarget;
   });
 
   return {
+    singleTargetMode: selection?.length === 1,
     connected: input.operatorReady,
     username: input.username.trim(),
     productionName: input.productionName?.trim() ?? '',

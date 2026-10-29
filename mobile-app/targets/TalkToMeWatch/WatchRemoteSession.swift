@@ -27,7 +27,7 @@ final class WatchRemoteSession: NSObject, ObservableObject {
   }
 
   func beginTalk(_ target: WatchRemoteTarget) {
-    guard holdingKey != target.key else {
+    guard target.canTalk, reachable, holdingKey != target.key else {
       return
     }
     holdingKey = target.key
@@ -80,7 +80,13 @@ final class WatchRemoteSession: NSObject, ObservableObject {
     if let type = message["type"] as? String, type.hasPrefix("talk-") {
       return
     }
-    snapshot = WatchRemoteSnapshot(message: message)
+    let next = WatchRemoteSnapshot(message: message)
+    // Changing the phone selection or losing a target must release an active hold.
+    if let held = holdingTarget,
+       !next.connected || !next.targets.contains(where: { $0.key == held.key && $0.canTalk }) {
+      endTalk(held)
+    }
+    snapshot = next
     reachable = WCSession.default.isReachable
     if snapshot.connected {
       let place = snapshot.productionName.isEmpty ? "TalkToMe" : snapshot.productionName

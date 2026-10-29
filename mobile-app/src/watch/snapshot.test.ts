@@ -99,3 +99,46 @@ describe('buildWatchRemoteSnapshot', () => {
     expect(snapshot.targets).toEqual([]);
   });
 });
+
+const selectionInput: Parameters<typeof buildWatchRemoteSnapshot>[0] = {
+  operatorReady: true, username: 'Alex', targets: [all, traktor, beni, stage, feed, listen],
+  peers: [onlineBeni], replyTarget: traktor, talking: false, talkingTargets: [],
+  incoming: { addressedNow: [] },
+};
+
+describe('selected Watch targets', () => {
+  it('sends only the selected fixed target in full-screen mode without an extra Reply', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput, selectedTargetKeys: ['conference-2'] });
+    expect(next.singleTargetMode).toBe(true);
+    expect(next.targets.map(x => x.key)).toEqual(['conference-2']);
+    expect(next.targets[0]?.pinned).toBe(false);
+  });
+
+  it('supports a full-screen dynamic Reply choice', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput, selectedTargetKeys: ['reply'] });
+    expect(next.singleTargetMode).toBe(true);
+    expect(next.targets[0]).toMatchObject({ key: 'conference-3', pinned: true });
+    expect(buildWatchRemoteSnapshot({ ...selectionInput, replyTarget: null, selectedTargetKeys: ['reply'] }).targets).toEqual([]);
+  });
+
+  it('keeps multiple selections in server order and marks offline targets unavailable', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput, selectedTargetKeys: ['user-12', 'conference-2'] });
+    expect(next.singleTargetMode).toBe(false);
+    expect(next.targets.map(x => x.key)).toEqual(['conference-2', 'user-12']);
+    expect(next.targets[1]?.canTalk).toBe(false);
+    const online = buildWatchRemoteSnapshot({ ...selectionInput, peers: [onlineStage], selectedTargetKeys: ['user-12'] });
+    expect(online.targets[0]?.canTalk).toBe(true);
+  });
+
+  it('does not substitute other targets for empty or unavailable saved selections', () => {
+    for (const keys of [[], ['conference-999'], ['feed-1'], ['conference-8']]) {
+      expect(buildWatchRemoteSnapshot({ ...selectionInput, selectedTargetKeys: keys }).targets).toEqual([]);
+    }
+  });
+
+  it('keeps automatic mode unchanged even when only one target is available', () => {
+    const next = buildWatchRemoteSnapshot({ ...selectionInput, targets: [all] });
+    expect(next.singleTargetMode).toBe(false);
+    expect(next.targets.map(x => x.key)).toEqual(['conference-2']);
+  });
+});

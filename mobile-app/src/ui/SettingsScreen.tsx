@@ -22,6 +22,7 @@ import { moveTargetOrder } from '../session/targetOrder';
 import { session, useSessionStore } from '../session/store';
 import { useSessionSheetOpen } from './sessionSheetState';
 import { talkTargetIdentity, type TalkTarget } from '../protocol';
+import { watchTargetCandidates, toggleWatchTarget, WATCH_REPLY_TARGET } from '../watch/selection';
 import { describeWatchRemoteStatus, watchRemoteShortStatus, watchRemoteStatus } from '../watch/native';
 import { PttAddDevicePage, PttDeviceDetailPage, PttDevicesPage } from './PttSettingsScreens';
 import { ProfilesPage, SessionPage } from './SessionPage';
@@ -49,6 +50,7 @@ type SettingsPage =
   | { kind: 'arrange' }
   | { kind: 'audio' }
   | { kind: 'ptt' }
+  | { kind: 'watch-targets' }
   | { kind: 'ptt-add' }
   | { kind: 'ptt-device'; id: string }
   | { kind: 'debug' };
@@ -120,6 +122,7 @@ export function SessionSheet({ onClose }: { onClose: () => void }) {
     onOpenArrange: () => push({ kind: 'arrange' }),
     onOpenAudio: () => push({ kind: 'audio' }),
     onOpenAccessories: () => push({ kind: 'ptt' }),
+    onOpenWatchTargets: () => push({ kind: 'watch-targets' }),
     onOpenDebug: () => push({ kind: 'debug' }),
     onAddDevice: () => push({ kind: 'ptt-add' }),
     onOpenDevice: (id: string) => push({ kind: 'ptt-device', id }),
@@ -225,6 +228,7 @@ function SettingsSheet({
   onOpenArrange,
   onOpenAudio,
   onOpenAccessories,
+  onOpenWatchTargets,
   onOpenDebug,
   onAddDevice,
   onOpenDevice,
@@ -242,6 +246,7 @@ function SettingsSheet({
   onOpenArrange: () => void;
   onOpenAudio: () => void;
   onOpenAccessories: () => void;
+  onOpenWatchTargets: () => void;
   onOpenDebug: () => void;
   onAddDevice: () => void;
   onOpenDevice: (id: string) => void;
@@ -283,9 +288,11 @@ function SettingsSheet({
         {page.kind === 'ptt' ? (
           <>
             <PttDevicesPage onAddDevice={onAddDevice} onOpenDevice={onOpenDevice} />
-            {Platform.OS === 'ios' ? <WatchSettingsSection /> : null}
+            {Platform.OS === 'ios' ? <WatchSettingsSection onOpenTargets={onOpenWatchTargets} /> : null}
           </>
         ) : null}
+
+        {page.kind === 'watch-targets' ? <WatchTargetsSettingsPage /> : null}
 
         {page.kind === 'ptt-add' ? <PttAddDevicePage onBound={showPttList} /> : null}
 
@@ -315,6 +322,8 @@ function headerForPage(page: SettingsPage, deviceName?: string): { title: string
       return { title: 'Audio', backLabel: 'Session' };
     case 'ptt':
       return { title: 'Accessories', backLabel: 'Session' };
+    case 'watch-targets':
+      return { title: 'Watch targets', backLabel: 'Accessories' };
     case 'ptt-add':
       return { title: 'Add a device', backLabel: 'Accessories' };
     case 'ptt-device':
@@ -611,8 +620,12 @@ function AudioSettingsPage({ onDimSliding }: { onDimSliding: (active: boolean) =
           />
         ))}
         <SettingsHint
-          full="In-call style combos: phone earpiece, speaker, or a connected headset. Audio stays in communication mode so echo cancellation can run."
-          compact="Earpiece, speaker, or headset. Stays in communication mode."
+          full={Platform.OS === 'ios'
+            ? 'Speaker or a connected headset. Audio stays in communication mode so echo cancellation can run.'
+            : 'In-call style combos: phone earpiece, speaker, or a connected headset. Audio stays in communication mode so echo cancellation can run.'}
+          compact={Platform.OS === 'ios'
+            ? 'Speaker or headset. Stays in communication mode.'
+            : 'Earpiece, speaker, or headset. Stays in communication mode.'}
         />
       </SettingsSection>
 
@@ -647,15 +660,61 @@ function AudioSettingsPage({ onDimSliding }: { onDimSliding: (active: boolean) =
   );
 }
 
-function WatchSettingsSection() {
+function WatchSettingsSection({ onOpenTargets }: { onOpenTargets: () => void }) {
+  const selections = useSessionStore(state => state.watchTargetSelections);
+  const profileId = useSessionStore(state => state.activeProfileId);
+  const productionId = useSessionStore(state => state.productionId);
+  const [status, setStatus] = useState(watchRemoteStatus);
+  useEffect(() => {
+    // Installation can change while this settings sheet remains open.
+    const timer = setInterval(() => setStatus(watchRemoteStatus()), 2000);
+    return () => clearInterval(timer);
+  }, []);
+  const selected = selections[mainButtonStorageKey(profileId, productionId)];
+  const summary = selected === undefined ? 'All targets'
+    : selected.length === 1 ? '1 target' : `${selected.length} targets`;
   return (
     <SettingsSection title="Apple Watch">
-      <SettingsRow label="Remote" value={watchRemoteShortStatus(watchRemoteStatus())} />
+      <SettingsRow label="Remote" value={watchRemoteShortStatus(status)} />
+      {status.appInstalled ? <SettingsNavRow label="Watch targets" value={summary} onPress={onOpenTargets} /> : null}
       <SettingsHint
-        full={`${describeWatchRemoteStatus(watchRemoteStatus())} The watch lists Reply, then the same online talk targets as the phone. Hold a row to talk; release to stop. Audio stays on the iPhone.`}
-        compact={`${describeWatchRemoteStatus(watchRemoteStatus())} Hold a row to talk. Audio stays on the iPhone.`}
+        full={`${describeWatchRemoteStatus(status)} Choose Watch targets to show one full-screen talk button or a list of selected targets. Hold to talk; release to stop. Audio stays on the iPhone.`}
+        compact={`${describeWatchRemoteStatus(status)} Choose one or more targets. Audio stays on the iPhone.`}
       />
     </SettingsSection>
+  );
+}
+
+function WatchTargetsSettingsPage() {
+  const store = useSessionStore();
+  const scope = mainButtonStorageKey(store.activeProfileId, store.productionId);
+  const selected = store.watchTargetSelections[scope];
+  const selfId = store.identity?.kind === 'user' ? store.identity.id : null;
+  const candidates = watchTargetCandidates(store.targets, selfId);
+  const known = new Set(candidates.map(talkTargetIdentity));
+  const unavailable = (selected ?? []).filter(key => key !== WATCH_REPLY_TARGET && !known.has(key));
+  const toggle = (key: string) => session.setWatchTargets(toggleWatchTarget(selected, key));
+  return (
+    <>
+      <SettingsSection>
+        <SettingsRow label="All talk targets" selected={selected === undefined} onPress={() => session.setWatchTargets(null)} />
+        <SettingsHint
+          full="All targets follows the phone. Tap targets below to choose a custom selection. One selected target fills the Watch screen; several use the list. Saved for this profile and production."
+          compact="Choose one full-screen target or several list targets. Saved for this production."
+        />
+      </SettingsSection>
+      <SettingsSection title="Choose targets">
+        <SettingsRow label="Reply" value="Latest caller" selected={selected?.includes(WATCH_REPLY_TARGET)} onPress={() => toggle(WATCH_REPLY_TARGET)} />
+        {candidates.map(target => {
+          const key = talkTargetIdentity(target);
+          return <SettingsRow key={key} label={target.label}
+            value={target.type === 'conference' ? 'Conference' : session.canTalkTo(target) ? 'User' : 'Offline'}
+            selected={selected?.includes(key)} onPress={() => toggle(key)} />;
+        })}
+        {unavailable.map(key => <SettingsRow key={key} label="Unavailable target" value="Saved" selected onPress={() => toggle(key)} />)}
+        {selected?.length === 0 ? <SettingsHint full="No targets selected. Choose one or more targets to use the Watch remote." compact="Choose at least one Watch target." /> : null}
+      </SettingsSection>
+    </>
   );
 }
 
