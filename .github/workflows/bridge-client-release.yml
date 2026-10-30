@@ -10,6 +10,10 @@ on:
         description: 'Version to build and upload to a draft (for example 1.5.10); empty uses Git version'
         required: false
         type: string
+      source_ref:
+        description: 'Optional source tag or commit to build with this workflow revision'
+        required: false
+        type: string
   push:
     branches:
       - "main"
@@ -44,6 +48,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source_ref || github.ref }}
           fetch-depth: 0
 
       - name: Resolve version from Git tags
@@ -68,7 +73,7 @@ jobs:
       matrix:
         include:
           - name: macOS arm64
-            os: macos-14
+            os: macos-15
             ffmpeg_source: macos-lgpl
             ffmpeg_sidecar: ffmpeg-aarch64-apple-darwin
             artifact_name: talktome_bridge_macos_arm64
@@ -84,6 +89,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source_ref || github.ref }}
           fetch-depth: 0
 
       - name: Setup Node
