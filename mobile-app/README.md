@@ -165,7 +165,10 @@ create the app in the publisher's Play Console, configure Play App Signing and
 an Android upload keystore through `npx eas-cli credentials --platform android`.
 Publisher setup, tester-link instructions and the Android-specific store copy are
 in [the Google Play checklist](store/google-play-setup.de.md) and
-[google-play.json](store/google-play.json).
+[google-play.json](store/google-play.json). Concrete Console answers and foreground-service
+video instructions are in [the Console handoff](store/google-play-console-answers.de.md);
+[beta tester instructions](store/google-play-beta-test.de.md) are ready to share after
+the closed test is available.
 Create a Google Cloud service account, enable the Android Publisher API, grant
 the service account the required app/release permissions in Play Console and
 assign its JSON key to the app in EAS Credentials. The key is not a GitHub
