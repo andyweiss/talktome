@@ -391,9 +391,14 @@ fn style(color: Rgb) -> Style {
             frame: Frame::Outline(palette::MENU_OUTLINE),
             solid: false,
         },
-        c if c == palette::CONTROL || c == palette::OFFLINE => Style {
+        c if c == palette::CONTROL => Style {
             fill: Some(color),
             frame: Frame::Outline(palette::OUTLINE),
+            solid: false,
+        },
+        c if c == palette::OFFLINE => Style {
+            fill: Some(color),
+            frame: Frame::None,
             solid: false,
         },
         c if c == palette::ON_AIR || c == palette::PREVIEW || c == palette::REPLY => Style {

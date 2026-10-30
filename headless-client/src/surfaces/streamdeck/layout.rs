@@ -38,12 +38,15 @@ pub mod palette {
     pub const IDLE: Rgb = Rgb(31, 41, 55);
     /// Status key at rest (`#1e293b`).
     pub const STATUS_OK: Rgb = Rgb(30, 41, 59);
-    /// Function keys, like the web layer switcher buttons.
-    pub const CONTROL: Rgb = Rgb(24, 34, 54);
-    /// Outline of control and offline keys (slate-400 at 25%).
-    pub const OUTLINE: Rgb = Rgb(45, 54, 72);
-    /// Offline target (`.is-offline`): darker than a card, outlined.
-    pub const OFFLINE: Rgb = Rgb(15, 21, 37);
+    /// Function keys (status, VOL, MEMBERS, NEXT, MUTE, − / +, CLEAR):
+    /// hollow, nearly page-dark (`#0f172a`) with a light outline. The rule
+    /// on the deck: an outline marks a function, a filled card is intercom.
+    pub const CONTROL: Rgb = Rgb(15, 23, 42);
+    /// Outline of function keys (`#64748b`).
+    pub const OUTLINE: Rgb = Rgb(100, 116, 139);
+    /// Offline intercom key (`.is-offline`): a dimmed card, no outline, so
+    /// it does not read as a function key.
+    pub const OFFLINE: Rgb = Rgb(20, 27, 42);
     pub const IDLE_TEXT: Rgb = Rgb(226, 232, 240);
     /// Secondary text (`#94a3b8`).
     pub const SUBTEXT: Rgb = Rgb(148, 163, 184);
@@ -964,7 +967,7 @@ fn status_appearance(snapshot: &Snapshot, state: &DeckState) -> Appearance {
             && snapshot.audio_ok
             && !snapshot.server_not_responding
         {
-            palette::STATUS_OK
+            palette::CONTROL
         } else {
             palette::STATUS_BAD
         },
@@ -1021,12 +1024,12 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
         Some(name) => {
             appearance.subtitle = name;
             if snapshot.main_unavailable {
-                appearance.background = palette::CONTROL;
+                appearance.background = palette::OFFLINE;
                 appearance.foreground = palette::OFFLINE_TEXT;
             }
         }
         None => {
-            appearance.background = palette::CONTROL;
+            appearance.background = palette::OFFLINE;
             appearance.foreground = palette::OFFLINE_TEXT;
         }
     }
@@ -1046,7 +1049,8 @@ fn reply_appearance(snapshot: &Snapshot) -> Appearance {
         appearance.background = palette::TALKING;
     } else if snapshot.reply_incoming().next().is_some() && appearance.background == palette::REPLY
     {
-        appearance.blink = Some(palette::CONTROL);
+        // Reply is an intercom key: it blinks to a plain card, not a function key.
+        appearance.blink = Some(palette::IDLE);
     }
     if snapshot.talking {
         mic_on_appearance(&mut appearance, snapshot);
@@ -2227,6 +2231,44 @@ mod tests {
     }
 
     #[test]
+    fn function_keys_are_hollow_and_intercom_keys_are_cards() {
+        let function = |role: Role| {
+            matches!(
+                role,
+                Role::Status
+                    | Role::VolumeToggle
+                    | Role::MembersToggle
+                    | Role::NextPage
+                    | Role::NextEncoderPage
+                    | Role::VolumeUp
+                    | Role::VolumeDown
+                    | Role::MuteSelected
+            )
+        };
+        let mut offline = snapshot(14);
+        offline.targets[3].online = false;
+        let idle = DeckState::default();
+        let volume = DeckState {
+            volume_layer: true,
+            ..DeckState::default()
+        };
+        for state in [&idle, &volume] {
+            for key in layout(&geometry("mk2"), &offline, state, &options()) {
+                let background = key.appearance.background;
+                if function(key.role) {
+                    assert!(
+                        [palette::CONTROL, palette::SELECTED].contains(&background),
+                        "{:?} should be a function key, got {background:?}",
+                        key.role
+                    );
+                } else if matches!(key.role, Role::Target(_) | Role::Reply) {
+                    assert_ne!(background, palette::CONTROL, "{:?} is intercom", key.role);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn reply_turns_red_mic_on_while_talking() {
         let mut snapshot = snapshot(3);
         let reply_key = |snapshot: &Snapshot| {
@@ -2287,7 +2329,7 @@ mod tests {
         assert_eq!(keys[3].appearance.subtitle, "News");
         assert_ne!(keys[3].appearance.subtitle, "jan");
         assert_eq!(keys[3].appearance.background, palette::REPLY);
-        assert_eq!(keys[3].appearance.blink, Some(palette::CONTROL));
+        assert_eq!(keys[3].appearance.blink, Some(palette::IDLE));
     }
 
     #[test]

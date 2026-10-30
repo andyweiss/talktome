@@ -253,6 +253,11 @@ server-side mute. The conference fader still scales the whole conference.
 
 ## Stream Deck
 
+- **Function keys look different from intercom keys.** Status, VOL,
+  MEMBERS, NEXT, MUTE, − / + and CLEAR are hollow: nearly page-dark with a
+  light outline (blue while active, cyan inside the menu). Targets, members
+  and Reply are filled cards; an offline target is a dimmed card without an
+  outline.
 - The top row is the command row: **status** (user name and production) at
   the left, **VOL** next to it, **NEXT** (when there are more targets than
   keys) one left of **Reply**, and **Reply** at the far right. Reply shows
