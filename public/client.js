@@ -109,6 +109,7 @@ socket.on("cut-camera", (value) => {
 });
 
 const BASE_REPLY_LABEL = "REPLY";
+// Configure DTX through opusDtx only; the obsolete RTP dtx boolean breaks Safari.
 const QUALITY_PROFILES = {
   "ultra-low": {
     label: "Ultra low (5 ms frame)",
@@ -120,7 +121,7 @@ const QUALITY_PROFILES = {
       opusMaxAverageBitrate: 48000,
       opusPtime: 5,
     },
-    encodings: [{ dtx: false, maxBitrate: 48000, priority: 'high' }],
+    encodings: [{ maxBitrate: 48000, priority: 'high' }],
     constraints: { channelCount: 1, sampleRate: 48000 },
     note: "minimal latency, best on stable networks",
   },
@@ -134,7 +135,7 @@ const QUALITY_PROFILES = {
       opusMaxAverageBitrate: 64000,
       opusPtime: 10,
     },
-    encodings: [{ dtx: false, maxBitrate: 64000, priority: 'high' }],
+    encodings: [{ maxBitrate: 64000, priority: 'high' }],
     constraints: { channelCount: 1, sampleRate: 48000 },
     note: "balanced latency vs. robustness",
   },
@@ -148,7 +149,7 @@ const QUALITY_PROFILES = {
       opusMaxAverageBitrate: 64000,
       opusPtime: 20,
     },
-    encodings: [{ dtx: false, maxBitrate: 64000, priority: 'high' }],
+    encodings: [{ maxBitrate: 64000, priority: 'high' }],
     constraints: { channelCount: 1, sampleRate: 48000 },
     note: "highest resilience, highest latency",
   },
@@ -722,7 +723,7 @@ const FEED_PROFILE = {
     opusMaxAverageBitrate: 128000,
     opusPtime: 20,
   },
-  encodings: [{ dtx: false, maxBitrate: 128000, priority: 'high' }],
+  encodings: [{ maxBitrate: 128000, priority: 'high' }],
   constraints: {
     channelCount: { ideal: 2 },
     sampleRate: { ideal: 48000 },
@@ -4405,6 +4406,7 @@ let cachedOperatorTargets = null;
   let streamPruneInterval = null;
   let activeProducerSyncInterval = null;
   let activeProducersSyncInFlight = false;
+  let activeProducersSyncRequested = false;
   let pendingIncomingConsumeKeys = new Set();
   const EARLY_CLOSED_CONSUMER_TTL_MS = 10000;
   const earlyClosedConsumerIds = new Map();
@@ -7843,6 +7845,7 @@ let cachedOperatorTargets = null;
     }
     stopActiveProducerSync();
     activeProducersSyncInFlight = false;
+    activeProducersSyncRequested = false;
     cleanupAllIncomingStreams({ suppressUi: true });
     document.querySelectorAll('#targets-list li.target-item').forEach(li => {
       li.classList.remove('talking-to', 'speaking');
@@ -10659,6 +10662,9 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
           audio.muted = true;
           audio.volume = 0;
           playbackGainNode = gainNode;
+          // Safari may return with its Web Audio context interrupted even though
+          // the feed's media element still reports that it is playing.
+          void resumeAudioContextIfNeeded(feedPlayback.ctx, { label: 'feed playback AudioContext' });
         } catch (err) {
           console.warn('Failed to initialize feed playback bus path:', err);
           gainNode = null;
@@ -10893,35 +10899,8 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
         return;
       }
 
-      if (usesSharedAudioElement) {
-        if (micPrimed || micTrack?.readyState === 'live') {
-          await warmReceiveAudioSession('incoming-producer-before-playback').catch(err => {
-            logReceiveDiagnostic('warm-receive-audio-session-failed', {
-              producerId: effectiveProducerId,
-              consumerId: consumer.id,
-              streamKey,
-              targetKey,
-              error: err?.message || String(err),
-            });
-          });
-        }
-        primeTargetPlaybackBus(targetKey, {
-          type: entry.type,
-          reason: 'incoming-producer-playback-bus',
-        });
-      } else {
-        await attemptPlayAudio(audio, {
-          producerId: effectiveProducerId,
-          consumerId: consumer.id,
-          streamKey,
-          targetKey,
-          type: entry.type,
-        }).catch(() => {});
-      }
-      if (isFeed && isOperatorSession()) {
-        applyFeedDucking();
-      }
-
+      // Resume delivery before play(): Safari can leave play() pending until
+      // packets arrive, while a newly created server consumer starts paused.
       logReceiveDiagnostic('resume-consumer-start', {
         producerId: effectiveProducerId,
         consumerId: consumer.id,
@@ -10940,6 +10919,40 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
           ? performance.now()
           : Date.now()) - consumeStartedAt),
       });
+      // A visibility transition may have disposed this entry while awaiting
+      // the server acknowledgement. Do not restart its detached audio element.
+      if (consumer.closed || audioElements.get(streamKey) !== entry) return;
+
+      if (usesSharedAudioElement) {
+        if (micPrimed || micTrack?.readyState === 'live') {
+          await warmReceiveAudioSession('incoming-producer-before-playback').catch(err => {
+            logReceiveDiagnostic('warm-receive-audio-session-failed', {
+              producerId: effectiveProducerId,
+              consumerId: consumer.id,
+              streamKey,
+              targetKey,
+              error: err?.message || String(err),
+            });
+          });
+        }
+        primeTargetPlaybackBus(targetKey, {
+          type: entry.type,
+          reason: 'incoming-producer-playback-bus',
+        });
+      } else {
+        // Playback can remain pending while iOS is backgrounded. It must not
+        // hold the producer reconciliation queue (including continuous feeds).
+        void attemptPlayAudio(audio, {
+          producerId: effectiveProducerId,
+          consumerId: consumer.id,
+          streamKey,
+          targetKey,
+          type: entry.type,
+        }).catch(() => {});
+      }
+      if (isFeed && isOperatorSession()) {
+        applyFeedDucking();
+      }
     } catch (err) {
       if (err?.message === 'Producer not found') {
         logReceiveDiagnostic('consume-skipped-producer-not-found', {
@@ -10971,7 +10984,11 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
 
   async function requestActiveProducers() {
     if (!isOperatorSession()) return;
-    if (activeProducersSyncInFlight) return;
+    if (activeProducersSyncInFlight) {
+      activeProducersSyncRequested = true;
+      return;
+    }
+    activeProducersSyncRequested = false;
     activeProducersSyncInFlight = true;
     try {
       const payloads = await new Promise((resolve, reject) => {
@@ -11030,6 +11047,11 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
       console.error('Failed to request active producers', err);
     } finally {
       activeProducersSyncInFlight = false;
+      // A foreground transition can invalidate streams during an older sync.
+      // Reconcile once more instead of dropping that request until the timer.
+      if (activeProducersSyncRequested && mediaInitialized && socket.connected) {
+        queueMicrotask(() => requestActiveProducers().catch(() => {}));
+      }
     }
   }
 

@@ -43,7 +43,11 @@ export function fgsCapabilityReason(running: boolean): string {
     : 'Android starts a microphone/media foreground service after you join a production. OEM battery savers can still kill it.';
 }
 
-/** Recents swipe should end the session. Home / app-switch (task still there) must keep FGS. */
+/**
+ * Recents swipe should end the session and the process, like iOS terminating
+ * the app. Home / app-switch (task still there) must keep the FGS. The native
+ * service does this in onTaskRemoved, which needs `stopWithTask="false"`.
+ */
 export function shouldStopForegroundServiceWhenTaskRemoved(): boolean {
   return true;
 }

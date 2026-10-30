@@ -11,7 +11,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.Process
 import android.util.Log
 
 class TalkToMeForegroundService : Service() {
@@ -75,6 +78,13 @@ class TalkToMeForegroundService : Service() {
     super.onDestroy()
   }
 
+  /**
+   * Recents swipe, the Android side of iOS `willTerminate`. Only delivered
+   * because the manifest sets `stopWithTask="false"`; with `true` Android
+   * stops the service silently and the process kept the socket connected.
+   * JS gets its disconnect first, then the process ends so nothing survives
+   * the swipe. Home or an app switch keeps the task and never lands here.
+   */
   override fun onTaskRemoved(rootIntent: Intent?) {
     Holder.listener?.onStopRequested()
     // Must match TalkToMeSessionWidget.ACTION_SESSION_ENDED.
@@ -85,6 +95,10 @@ class TalkToMeForegroundService : Service() {
     )
     stopSession()
     super.onTaskRemoved(rootIntent)
+    Handler(Looper.getMainLooper()).postDelayed(
+      { Process.killProcess(Process.myPid()) },
+      TASK_REMOVED_EXIT_DELAY_MS,
+    )
   }
 
   private fun startInForeground() {
@@ -254,6 +268,8 @@ class TalkToMeForegroundService : Service() {
     const val LEGACY_CHANNEL_ID_V2 = "talktome.session.v2"
     const val LEGACY_CHANNEL_ID_V3 = "talktome.session.v3"
     const val NOTIFICATION_ID = 5602
+    /** Time JS gets to send its disconnect before the process ends. */
+    const val TASK_REMOVED_EXIT_DELAY_MS = 1500L
     private const val TAG = "TalkToMeFgs"
 
     @Volatile
