@@ -1,6 +1,6 @@
 # Google Play: Einrichtung und Betatests
 
-Stand: 29. Oktober 2026. App: **Talktome Intercom**,
+Stand: 30. Oktober 2026. App: **Talktome Intercom**,
 Paketname **`com.talktome.mobile`**. Standard-Store-Sprache **en-US**, zusätzlich
 Deutsch. Texte stehen in [google-play.json](google-play.json).
 
@@ -16,14 +16,21 @@ Testern über 14 Tage einzuplanen; ein interner Test allein genügt nicht.
   Application Identifier `com.talktome.mobile`, Build Credentials „Talktome Play Upload“.
   Dieser Schlüssel ist keine JSON-Datei für die Google-API. Er signiert das AAB.
 - Einreichungsprofil: Track `internal`, Release-Status `draft`.
-- Production-AAB 1.0.0 (38) über EAS erfolgreich gebaut:
-  [Build-Status](https://expo.dev/accounts/talktomecomm/projects/talktome/builds/58cf15c4-d457-497a-8896-0714afe310d3).
+- Production-AAB 1.0.0 (39) über EAS erfolgreich gebaut:
+  [Build-Status](https://expo.dev/accounts/talktomecomm/projects/talktome/builds/5db96f6d-2f91-4c06-81e9-9420bbb580e5).
+  Enthält den gemergten Android-Fix aus [PR #187](https://github.com/thepoison606/talktome/pull/187)
+  für Einstellungen, Reply oberhalb der 3-Tasten-Navigationsleiste und Disconnect
+  beim Schließen aus der App-Übersicht. Quellstand: `c9c250c` mit Buildnummer 39.
   Heruntergeladen und geprüft: tatsächlicher Manifest-Paketname `com.talktome.mobile`,
-  Versionscode 38, Version 1.0.0, ZIP-Integrität und JAR-Signatur. Lokale Datei im
+  Versionscode 39, Version 1.0.0, ZIP-Integrität und JAR-Signatur. Derselbe
+  Upload-Signierschlüssel wie bei Build 38; `stopWithTask="false"` ist im fertigen
+  AAB enthalten. Lokale Datei im
   privaten Benutzerordner `Library/Application Support/Talktome/builds/`.
   Das AAB ist zu Google Play hochgeladen; der von Google gelieferte SHA-256-Wert
-  entspricht der geprüften lokalen Datei. Build 38 ist in `internal` und `alpha`
-  jeweils als **Entwurf** gespeichert. `production` enthält keinen Release.
+  entspricht der geprüften lokalen Datei. Build 39 ersetzt den bisherigen Build 38
+  in `internal` und `alpha` jeweils als **Entwurf**, mit deutschen und englischen
+  Änderungshinweisen. `production` enthält keinen Release.
+  430 Mobile-Tests, TypeScript und Expo-Konfiguration vor dem Build erfolgreich geprüft.
 - Deutsche und englische Texte mit geprüften Google-Längenlimits. Android-Texte
   versprechen keine Apple-Watch-/Live-Activity-Funktionen und sind in beiden
   Play-Store-Sprachen gespeichert.
@@ -87,7 +94,7 @@ Kontoverifizierungen bleiben Schritte im Browser.
 1. App → Testen und veröffentlichen → Tests → Interner Test oder Geschlossener
    Test → Alpha öffnen. Für die erforderlichen zwölf Tester über 14 Tage den
    **geschlossenen Test** verwenden.
-2. Den bereits vorbereiteten Release **1.0.0 (38)** öffnen. Er enthält das signierte
+2. Den bereits vorbereiteten Release **1.0.0 (39)** öffnen. Er enthält das signierte
    Production-AAB für `com.talktome.mobile`. Die GitHub-APK mit Paketnamen `.sideload`
    und Debug-Signierung ist dafür nicht geeignet.
 3. Unter Tester eine E-Mail-Liste mit den Google-Konten der Tester oder eine

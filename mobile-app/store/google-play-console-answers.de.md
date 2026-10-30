@@ -1,13 +1,15 @@
 # Play Console: Antworten und letzte Schritte
 
-Stand: 29. Oktober 2026, Android 1.0.0 (38), `com.talktome.mobile`.
+Stand: 30. Oktober 2026, Android 1.0.0 (39), `com.talktome.mobile`.
 Dies ist eine Ausfüllhilfe. Die folgenden Fragebögen wurden **nicht** in der
 Console gespeichert. Einträge, die dort bereits vorhanden sind, zuerst prüfen.
 
 ## Aktuell bei Google geprüft
 
-- AAB 38, deutsche und englische Store-Texte, Icon und Feature-Grafiken sind gespeichert.
-- `internal` und `alpha` enthalten Build 38 als Entwurf. Kein Produktionsrelease.
+- AAB 39, deutsche und englische Store-Texte, Icon und Feature-Grafiken sind gespeichert.
+- `internal` und `alpha` enthalten Build 39 als Entwurf. Kein Produktionsrelease.
+  Dieser Build enthält den Android-Fix für Einstellungen, Navigationsleisten-Abstand
+  und Disconnect beim Schließen aus der App-Übersicht (Issue #186 / PR #187).
 - In beiden Store-Sprachen fehlen echte Android-Telefon-Screenshots.
 - Der geschlossene Test übernimmt die Produktions-Länderauswahl
   (`syncWithProduction: true`). Die API liefert für Produktion keine Länderliste.
@@ -141,7 +143,9 @@ Weitere Antworten:
 Codegrundlage: `src/auth/apiClient.ts`, `src/signaling/client.ts`,
 `src/servers/parseServerAddress.ts`, `src/servers/parseConnectPayload.ts`,
 `src/media/engine.ts`, `src/session/remotePanelCoordinator.ts` und die nativen Module.
-Die Auswertung bezieht sich auf Build 38. Keine Datensicherheits-Erklärung wurde
+Die Auswertung gilt für Build 38 und 39; der Fix in 39 ändert Layout und
+Sitzungsbeendigung, keine der hier beschriebenen Datenübertragungen.
+Keine Datensicherheits-Erklärung wurde
 über die schreibende API eingereicht; vorhandene Antworten wären dadurch überschrieben.
 
 [Google: Konto-Löschung](https://support.google.com/googleplay/android-developer/answer/13327111)
@@ -221,7 +225,7 @@ Android-Geräteverbindung verfügbar; deshalb wurden keine Aufnahmen vorgetäusc
 2. Geschlossener Test → Alpha → Länder/Regionen kontrollieren und auswählen.
 3. Tester → E-Mail-Liste erstellen/auswählen, Google-Konten der Tester eintragen,
    Liste dem Track zuweisen. Feedback: `talktome@platonstudio.de`.
-4. Release 1.0.0 (38) prüfen und den geschlossenen Test zur Prüfung/Freigabe senden.
+4. Release 1.0.0 (39) prüfen und den geschlossenen Test zur Prüfung/Freigabe senden.
 5. Sobald der Track verfügbar ist, den **von der Console angezeigten** Teilnahme-Link
    an die freigeschalteten Personen geben. Keine Einladungen wurden automatisch versendet.
 6. Teilnehmer müssen dem geschlossenen Test mit genau diesem Google-Konto beitreten.
