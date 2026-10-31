@@ -311,6 +311,9 @@ server-side mute. The conference fader still scales the whole conference.
 - On the + and + XL touch strip, a small arrow at the right (left) edge
   shows that a swipe reaches a next (previous) page: key pages on the +,
   dial pages on the + XL. No arrow means everything fits on one page.
+- The strip segment above a dial greys out like its key when that user
+  (or conference member) is offline, bar included; a muted one keeps its
+  red bar.
   The web UI shows which target each dial currently controls.
 - Neo: the two touch points switch key pages.
 - Pedal: right = reply; left and middle are assignable (see **Pedal layout

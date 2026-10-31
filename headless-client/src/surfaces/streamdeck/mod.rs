@@ -1584,7 +1584,10 @@ fn publish_deck_view(
 /// What a touch-strip segment shows, for [`strip_background`].
 #[derive(Clone, Copy, Default)]
 struct StripState {
+    /// The server connection is gone: every segment greys out.
     offline: bool,
+    /// This user / member is not online (same as the greyed-out key).
+    away: bool,
     talking: bool,
     locked: bool,
     listening: bool,
@@ -1594,7 +1597,8 @@ struct StripState {
 /// Segment colour on the Stream Deck + touch strip. A muted target or member
 /// stays grey like the rest even while audio arrives: the red bar and MUTED
 /// already say it is muted, and green would claim it can be heard. Talking
-/// and a lock are our own action and still show.
+/// and a lock are our own action and still show, also on someone who is not
+/// online, like their key.
 fn strip_background(state: StripState) -> layout::Rgb {
     if state.offline {
         palette::OFFLINE
@@ -1602,6 +1606,8 @@ fn strip_background(state: StripState) -> layout::Rgb {
         palette::TALKING
     } else if state.locked {
         palette::LOCKED
+    } else if state.away {
+        palette::OFFLINE
     } else if state.listening && !state.muted {
         palette::INCOMING
     } else {
@@ -1631,6 +1637,7 @@ async fn render_lcd(
                     muted: target.muted,
                     background: strip_background(StripState {
                         offline,
+                        away: !target.online,
                         talking: target.held,
                         locked: target.locked,
                         listening: target.incoming || target.receiving,
@@ -1643,6 +1650,7 @@ async fn render_lcd(
                     muted: member.muted,
                     background: strip_background(StripState {
                         offline,
+                        away: !member.online,
                         talking: false,
                         locked: false,
                         listening: member.receiving,
@@ -1809,6 +1817,22 @@ mod tests {
             ..talking
         };
         assert_eq!(strip_background(offline), palette::OFFLINE);
+    }
+
+    #[test]
+    fn an_offline_user_greys_out_on_the_strip_like_the_key() {
+        let away = StripState {
+            away: true,
+            listening: true,
+            ..StripState::default()
+        };
+        assert_eq!(strip_background(away), palette::OFFLINE);
+        // Holding talk to someone who is offline still shows, as on the key.
+        let talking = StripState {
+            talking: true,
+            ..away
+        };
+        assert_eq!(strip_background(talking), palette::TALKING);
     }
 
     #[test]

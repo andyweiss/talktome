@@ -278,6 +278,9 @@ impl Renderer {
                 segment.volume,
                 if segment.muted {
                     palette::MUTED
+                } else if segment.background == palette::OFFLINE {
+                    // Offline: the level stays readable but greyed out.
+                    palette::OFFLINE_TEXT
                 } else {
                     palette::BAR
                 },
