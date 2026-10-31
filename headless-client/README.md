@@ -265,9 +265,10 @@ server-side mute. The conference fader still scales the whole conference.
   While the microphone is live (any key, a GPIO input, VOX, a talk lock
   or the remote panel), Reply turns red and reads **MIC ON** with the
   target being talked to, or "N targets".
-- **Tap status to open the menu.** The deck switches to a page of its own:
-  **CLEAR / locks** sits next to status in the top row, and **CHANGE
-  PRODUCTION** and **INFO** (same colour as the MENU key) open another screen.
+- **Tap status to open the menu.** The deck switches to a page of its own
+  with three entries side by side on the row under the status key, all in the
+  menu colour: **CHANGE PRODUCTION** and **INFO** open another screen,
+  **CLEAR / locks** acts at once.
   - **CHANGE PRODUCTION** lists your productions. The active one is highlighted
     ("current"). Tap another production to switch to it: talking stops,
     the targets of the new production load, and the choice is saved as
@@ -284,8 +285,9 @@ server-side mute. The conference fader still scales the whole conference.
   `streamdeck.volume_layer_timeout_s`. Holding status 2 s still pages the
   keys.
 - Remaining keys are targets in the same order as the web client: **left to
-  right, top to bottom**. If there are fewer targets than keys, used rows sit
-  on the **lowest available rows** (empty rows above the block). Hold to talk,
+  right, top to bottom**. Targets start on the row right under the
+  command row; when there are fewer targets than keys, the empty keys are at
+  the bottom. Hold to talk,
   tap to toggle a talk lock (purple with a lock badge). Feeds cannot be talked
   to; pressing a feed toggles its mute.
 - `VOL` opens the volume layer: mute / − / + occupy the command row (on a
@@ -306,6 +308,9 @@ server-side mute. The conference fader still scales the whole conference.
   above them (the bottom row of the current page). No separate dial paging.
 - Stream Deck + XL: six dials can be paged independently (swipe the touch
   strip) so every target's volume can be adjusted.
+- On the + and + XL touch strip, a small arrow at the right (left) edge
+  shows that a swipe reaches a next (previous) page: key pages on the +,
+  dial pages on the + XL. No arrow means everything fits on one page.
   The web UI shows which target each dial currently controls.
 - Neo: the two touch points switch key pages.
 - Pedal: right = reply; left and middle are assignable (see **Pedal layout

@@ -328,6 +328,52 @@ impl Renderer {
     }
 }
 
+/// Page hints on the touch strip: there is a page to swipe to on that side.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StripArrows {
+    pub prev: bool,
+    pub next: bool,
+}
+
+/// Draws a small filled arrow at each strip edge that has a page behind it:
+/// left / right on a landscape strip, top / bottom on a portrait one.
+pub fn draw_strip_arrows(image: &mut RgbImage, arrows: StripArrows) {
+    let (w, h) = image.dimensions();
+    let horizontal = w >= h;
+    let short = w.min(h);
+    let depth = (short as f32 * 0.16).max(5.0) as u32; // how far the arrow points
+    let span = depth * 2; // its base
+    let inset = (short as f32 * 0.04).max(2.0) as u32;
+    let colour = to_pixel(palette::SUBTEXT);
+    let mut put = |x: u32, y: u32| {
+        if let Some(px) = image.get_pixel_mut_checked(x, y) {
+            *px = colour;
+        }
+    };
+    for (show, forward) in [(arrows.prev, false), (arrows.next, true)] {
+        if !show {
+            continue;
+        }
+        // Step from the base (d = 0) to the tip (d = depth); the arrow narrows.
+        for d in 0..=depth {
+            let half = (span / 2) * (depth - d) / depth.max(1);
+            let along = if forward {
+                (if horizontal { w } else { h }) - inset - depth + d
+            } else {
+                inset + depth - d
+            };
+            let middle = (if horizontal { h } else { w }) / 2;
+            for across in middle.saturating_sub(half)..=middle + half {
+                if horizontal {
+                    put(along, across);
+                } else {
+                    put(across, along);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StripSegment {
     pub title: String,
@@ -1039,8 +1085,9 @@ mod tests {
         let mut five = snapshot.clone();
         five.targets.truncate(5);
         let keys = layout(&mk2, &five, &DeckState::default(), &options);
-        assert_eq!(keys[5].role, Role::Empty);
-        assert_eq!(keys[10].appearance.title, "adi");
+        // Five targets fill the row under the command row; the bottom stays empty.
+        assert_eq!(keys[5].appearance.title, "adi");
+        assert_eq!(keys[10].role, Role::Empty);
         compose_grid(&renderer, &keys, mk2.cols, 72)
             .save(dir.join("talktome-layout-mk2-five.png"))
             .unwrap();

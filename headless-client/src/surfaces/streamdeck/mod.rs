@@ -31,7 +31,7 @@ use layout::{
     volume_toggle_defers_to_release, Appearance, DeckState, EncoderBinding, Geometry, KeySpec,
     LayoutOptions, MenuPage, Role, LISTEN_ONLY_NOTICE,
 };
-use render::{Renderer, StripSegment};
+use render::{draw_strip_arrows, Renderer, StripArrows, StripSegment};
 use tokio::sync::mpsc;
 
 pub const MOCK_ENV: &str = "TALKTOME_MOCK_STREAMDECK";
@@ -698,7 +698,7 @@ async fn run_device(
     let mut snapshot: Arc<Snapshot> = with_demo_targets(snapshots.borrow().clone(), is_mock);
     let mut rendered: HashMap<u8, (Appearance, bool)> = HashMap::new();
     let mut images: HashMap<u8, (u64, Arc<Vec<u8>>)> = HashMap::new();
-    let mut lcd_rendered: Option<Vec<StripSegment>> = None;
+    let mut lcd_rendered: Option<(Vec<StripSegment>, StripArrows)> = None;
     let mut pressed: HashMap<u8, PressedKey> = HashMap::new();
     let mut pressed_encoders: HashMap<u8, Instant> = HashMap::new();
     let mut ip_checked: Option<Instant> = None;
@@ -1581,6 +1581,34 @@ fn publish_deck_view(
     }
 }
 
+/// What a touch-strip segment shows, for [`strip_background`].
+#[derive(Clone, Copy, Default)]
+struct StripState {
+    offline: bool,
+    talking: bool,
+    locked: bool,
+    listening: bool,
+    muted: bool,
+}
+
+/// Segment colour on the Stream Deck + touch strip. A muted target or member
+/// stays grey like the rest even while audio arrives: the red bar and MUTED
+/// already say it is muted, and green would claim it can be heard. Talking
+/// and a lock are our own action and still show.
+fn strip_background(state: StripState) -> layout::Rgb {
+    if state.offline {
+        palette::OFFLINE
+    } else if state.talking {
+        palette::TALKING
+    } else if state.locked {
+        palette::LOCKED
+    } else if state.listening && !state.muted {
+        palette::INCOMING
+    } else {
+        palette::IDLE
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn render_lcd(
     device: &Device,
@@ -1590,7 +1618,7 @@ async fn render_lcd(
     geometry: &Geometry,
     state: &DeckState,
     snapshot: &Snapshot,
-    rendered: &mut Option<Vec<StripSegment>>,
+    rendered: &mut Option<(Vec<StripSegment>, StripArrows)>,
 ) -> Result<()> {
     let offline = layout::connection_lost(snapshot);
     let segments: Vec<StripSegment> = if geometry.encoders > 0 {
@@ -1601,31 +1629,25 @@ async fn render_lcd(
                     title: target.name.clone(),
                     volume: target.volume,
                     muted: target.muted,
-                    background: if offline {
-                        palette::OFFLINE
-                    } else if target.held {
-                        palette::TALKING
-                    } else if target.locked {
-                        palette::LOCKED
-                    } else if target.incoming || target.receiving {
-                        palette::INCOMING
-                    } else {
-                        palette::IDLE
-                    },
+                    background: strip_background(StripState {
+                        offline,
+                        talking: target.held,
+                        locked: target.locked,
+                        listening: target.incoming || target.receiving,
+                        muted: target.muted,
+                    }),
                 },
                 Some(EncoderBinding::Member { member, .. }) => StripSegment {
                     title: member.name.clone(),
                     volume: member.volume,
                     muted: member.muted,
-                    background: if offline {
-                        palette::OFFLINE
-                    } else if member.receiving {
-                        palette::RECEIVING
-                    } else if member.muted {
-                        palette::MUTED
-                    } else {
-                        palette::IDLE
-                    },
+                    background: strip_background(StripState {
+                        offline,
+                        talking: false,
+                        locked: false,
+                        listening: member.receiving,
+                        muted: member.muted,
+                    }),
                 },
                 None => StripSegment {
                     title: String::new(),
@@ -1656,23 +1678,138 @@ async fn render_lcd(
             },
         }]
     };
-    if rendered.as_ref() == Some(&segments) {
+    let arrows = strip_arrows(geometry, state, snapshot);
+    if rendered.as_ref() == Some(&(segments.clone(), arrows)) {
         return Ok(());
     }
     let _ = kind;
-    let image = renderer.strip(size, &segments);
+    let mut image = renderer.strip(size, &segments);
+    draw_strip_arrows(&mut image, arrows);
     device.set_lcd(image).await.context("writing LCD")?;
-    *rendered = Some(segments);
+    *rendered = Some((segments, arrows));
     Ok(())
+}
+
+/// Which way a swipe on the strip can still go, matching the swipe handler:
+/// the key pages on a Stream Deck + (dials under the keys), the dial pages
+/// on a + XL once there is more than one.
+fn strip_arrows(geometry: &Geometry, state: &DeckState, snapshot: &Snapshot) -> StripArrows {
+    if geometry.encoders == 0 {
+        return StripArrows::default();
+    }
+    let items = key_item_count(snapshot, state);
+    let dial_pages = encoder_page_count(geometry, items);
+    let (page, pages) = if geometry.encoders_follow_bottom_row() || dial_pages <= 1 {
+        (state.key_page(), page_count(geometry, items))
+    } else {
+        (state.encoder_page, dial_pages)
+    };
+    let page = page.min(pages.saturating_sub(1));
+    StripArrows {
+        prev: pages > 1 && page > 0,
+        next: pages > 1 && page + 1 < pages,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        dial_hold_action, effective_key_size, kind_from_name, lcd_logical_size, local_ip_towards,
-        BoundEncoder, DialHold, Kind,
+        dial_hold_action, effective_key_size, geometry_for, kind_from_name, lcd_logical_size,
+        local_ip_towards, palette, strip_arrows, strip_background, BoundEncoder, DeckState,
+        DialHold, Kind, Snapshot, StripArrows, StripState,
     };
+    use crate::state::TargetInfo;
+
+    fn with_targets(count: usize) -> Snapshot {
+        let mut snapshot = Snapshot::initial("cam1", "Cam 1");
+        snapshot.targets = (0..count)
+            .map(|i| TargetInfo {
+                key: TargetKey::User(i as i64),
+                name: format!("T{i}"),
+                can_talk: true,
+                online: true,
+                held: false,
+                locked: false,
+                incoming: false,
+                receiving: false,
+                volume: 0.9,
+                muted: false,
+                members: Vec::new(),
+            })
+            .collect();
+        snapshot
+    }
+
+    #[test]
+    fn strip_arrows_point_to_the_pages_a_swipe_reaches() {
+        let both = StripArrows {
+            prev: true,
+            next: true,
+        };
+        let next = StripArrows {
+            prev: false,
+            next: true,
+        };
+        let prev = StripArrows {
+            prev: true,
+            next: false,
+        };
+        // Stream Deck +: four keys per page, the swipe pages the keys.
+        let plus = geometry_for(Kind::Plus);
+        let snapshot = with_targets(10);
+        let mut state = DeckState::default();
+        assert_eq!(strip_arrows(&plus, &state, &snapshot), next);
+        state.page = 1;
+        assert_eq!(strip_arrows(&plus, &state, &snapshot), both);
+        state.page = 2;
+        assert_eq!(strip_arrows(&plus, &state, &snapshot), prev);
+        // Everything on one page: no arrow.
+        let one = with_targets(3);
+        assert_eq!(
+            strip_arrows(&plus, &DeckState::default(), &one),
+            StripArrows::default()
+        );
+        // Stream Deck + XL: six dials, the swipe pages the dials.
+        let plus_xl = geometry_for(Kind::PlusXl);
+        let mut state = DeckState::default();
+        assert_eq!(strip_arrows(&plus_xl, &state, &snapshot), next);
+        state.encoder_page = 1;
+        assert_eq!(strip_arrows(&plus_xl, &state, &snapshot), prev);
+        // Decks without a strip never get arrows.
+        let mk2 = geometry_for(Kind::Mk2);
+        assert_eq!(
+            strip_arrows(&mk2, &DeckState::default(), &snapshot),
+            StripArrows::default()
+        );
+    }
     use crate::talk::TargetKey;
+
+    #[test]
+    fn a_muted_strip_segment_is_grey_not_green() {
+        let listening = StripState {
+            listening: true,
+            ..StripState::default()
+        };
+        assert_eq!(strip_background(listening), palette::INCOMING);
+        // A muted PGM feed (or member) that still receives audio: grey.
+        let muted = StripState {
+            muted: true,
+            ..listening
+        };
+        assert_eq!(strip_background(muted), palette::IDLE);
+        assert_eq!(strip_background(StripState::default()), palette::IDLE);
+        // Our own talk and locks still show on a muted target.
+        let talking = StripState {
+            talking: true,
+            ..muted
+        };
+        assert_eq!(strip_background(talking), palette::TALKING);
+        let offline = StripState {
+            offline: true,
+            ..talking
+        };
+        assert_eq!(strip_background(offline), palette::OFFLINE);
+    }
 
     #[test]
     fn holding_a_dial_opens_and_leaves_the_member_mix() {

@@ -660,11 +660,11 @@ Every command is answered with the matching `-result` event carrying the
     command row holds only status and **NEXT** when a page does not fit;
     every other key is blank. Status reads **MENU / close** on the root and
     **PRODUCTION / back** or **INFO / back** on a sub-page; a tap goes up one
-    level. The root lists two entries on the target keys (lowest rows,
-    left to right), so it fits every visual deck down to the Mini.
-    On the root, **CLEAR / locks** sits next to status in the command row;
-    **CHANGE PRODUCTION** and **INFO** use the status key's menu colour and show
-    only their title (they open another screen).
+    level. The root lists three entries on the target keys (starting on the
+    row under the command row, left to right: **CHANGE PRODUCTION**,
+    **CLEAR / locks**, **INFO**), so it fits every visual deck down to the
+    Mini. They use the status key's menu colour; CHANGE PRODUCTION and INFO
+    open another screen.
     - **CHANGE PRODUCTION** opens the production page. It lists the user's
       productions (`GET /users/:id/productions`, refreshed after
       `available-productions-updated`) in server order; the active one is
@@ -682,8 +682,8 @@ Every command is answered with the matching `-result` event carrying the
     Dials do nothing while it is open. Without productions (server
     multi-production off) the production page shows "No productions".
   - Remaining keys: targets in **left-to-right, top-to-bottom** order like
-    the web client. If there are fewer targets than keys, whole rows sit on
-    the lowest available rows (empty rows stay above the block). Feeds show
+    the web client. Targets start on the row right under the command row;
+    with fewer targets than keys the empty keys stay at the bottom. Feeds show
     name + volume; press toggles mute.
   - **Volume on models without enough command-row space**: **VOL** toggles
     the volume layer. Mute / − / + are placed on the command row between
@@ -716,7 +716,10 @@ Every command is answered with the matching `-result` event carrying the
     = volume, press = mute. No separate dial paging. Strip swipe pages keys.
   - **Stream Deck + XL**: six dials are paged independently of the keys
     (swipe the touch strip; there is no DIALS key) so every target can
-    be mixed. The web UI labels each dial with its current target.
+    be mixed.
+  - **Strip page arrows** (+ and + XL): a small arrow at the right edge of
+    the strip when a next page exists, at the left edge when a previous one
+    does, for whatever the swipe pages (keys on the +, dials on the + XL). The web UI labels each dial with its current target.
   - **Neo** touch points act as previous/next **key** page.
   - **Pedal**: three foot switches. Right is always **Reply** and cannot be
     remapped. Left and middle are pinned with `streamdeck.layout` (JSON

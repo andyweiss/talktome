@@ -190,15 +190,16 @@ pub enum Role {
 /// Pages of the menu opened from the status key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuPage {
-    /// Entries: Production, Info; CLEAR sits next to status.
+    /// Entries: Production, Clear locks, Info.
     Root,
     Productions,
     Info,
 }
 
-/// Root menu entries, in key order.
-const MENU_ENTRIES: [Role; 2] = [
+/// Root menu entries, in key order; they sit together on the target keys.
+const MENU_ENTRIES: [Role; 3] = [
     Role::Menu(MenuPage::Productions),
+    Role::ClearLocks,
     Role::Menu(MenuPage::Info),
 ];
 
@@ -537,18 +538,13 @@ pub fn target_slots(geometry: &Geometry) -> Vec<u8> {
     slots
 }
 
-/// Place `item_count` targets like the web client: left to right, then top to
-/// bottom, with the used rows sitting on the lowest available target rows.
+/// Place `item_count` items left to right, then top to bottom, starting on
+/// the row under the command row; unused keys stay at the bottom.
 pub fn occupied_target_slots(geometry: &Geometry, item_count: usize) -> Vec<u8> {
-    let slots = target_slots(geometry);
-    let cols = geometry.cols as usize;
-    if item_count == 0 || slots.is_empty() || cols == 0 {
-        return Vec::new();
-    }
-    let available_rows = slots.len().div_ceil(cols);
-    let needed_rows = item_count.div_ceil(cols).min(available_rows);
-    let skip = available_rows.saturating_sub(needed_rows) * cols;
-    slots.into_iter().skip(skip).take(item_count).collect()
+    target_slots(geometry)
+        .into_iter()
+        .take(item_count)
+        .collect()
 }
 
 /// Items sitting on the physical bottom key row, one per encoder (Stream Deck +).
@@ -798,12 +794,8 @@ fn command_roles(
     };
 
     if state.menu.is_some() {
-        // Menu pages are pages of their own: status = back, CLEAR next to it
-        // on the root, paging; nothing else.
+        // Menu pages are pages of their own: status = back, paging; nothing else.
         row[0] = Some(Role::Status);
-        if state.menu == Some(MenuPage::Root) && cols > 2 {
-            row[1] = Some(Role::ClearLocks);
-        }
         if key_pages > 1 && cols > 1 {
             row[cols - 1] = Some(Role::NextPage);
         }
@@ -1791,7 +1783,7 @@ mod tests {
         let mut state = DeckState::default();
         state.open_menu(MenuPage::Root);
         let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
-        assert_eq!(keys[10].appearance.background, palette::MENU);
+        assert_eq!(keys[5].appearance.background, palette::MENU);
     }
 
     #[test]
@@ -1863,18 +1855,19 @@ mod tests {
         assert_eq!(keys[0].role, Role::Status);
         assert_eq!(keys[0].appearance.title, "MENU");
         assert_eq!(keys[0].appearance.footer, "close");
-        // CLEAR next to status; no VOL, NEXT, MEMBERS or Reply.
-        assert_eq!(keys[1].role, Role::ClearLocks);
-        assert!(keys[2..5].iter().all(|key| key.role == Role::Empty));
-        assert_eq!(keys[10].role, Role::Menu(MenuPage::Productions));
-        assert_eq!(keys[11].role, Role::Menu(MenuPage::Info));
+        // Only status in the command row: no CLEAR, VOL, NEXT, MEMBERS or Reply.
+        assert!(keys[1..5].iter().all(|key| key.role == Role::Empty));
+        // All entries together on the row right under the command row.
+        assert_eq!(keys[5].role, Role::Menu(MenuPage::Productions));
+        assert_eq!(keys[6].role, Role::ClearLocks);
+        assert_eq!(keys[7].role, Role::Menu(MenuPage::Info));
         // Menu keys share one look: MENU colour, short title, small
         // second word (CHANGE / production, CLEAR / locks).
-        assert_eq!(keys[10].appearance.title, "CHANGE");
-        assert_eq!(keys[10].appearance.subtitle, "production");
-        assert_eq!(keys[1].appearance.title, "CLEAR");
-        assert_eq!(keys[1].appearance.subtitle, "locks");
-        for key in [&keys[1], &keys[10], &keys[11]] {
+        assert_eq!(keys[5].appearance.title, "CHANGE");
+        assert_eq!(keys[5].appearance.subtitle, "production");
+        assert_eq!(keys[6].appearance.title, "CLEAR");
+        assert_eq!(keys[6].appearance.subtitle, "locks");
+        for key in [&keys[5], &keys[6], &keys[7]] {
             assert_eq!(key.appearance.background, keys[0].appearance.background);
             assert_eq!(key.appearance.badge, None);
         }
@@ -1932,11 +1925,11 @@ mod tests {
         state.open_menu(MenuPage::Info);
         let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
         assert_eq!(keys[0].appearance.title, "INFO");
-        // Five lines fit the bottom row.
-        assert_eq!(keys[10].role, Role::Info(0));
-        assert_eq!(keys[10].appearance.title, "RTT");
-        assert_eq!(keys[11].appearance.background, palette::STATUS_BAD);
-        assert_eq!(keys[14].appearance.title, "IP");
+        // Five lines fill the first target row.
+        assert_eq!(keys[5].role, Role::Info(0));
+        assert_eq!(keys[5].appearance.title, "RTT");
+        assert_eq!(keys[6].appearance.background, palette::STATUS_BAD);
+        assert_eq!(keys[9].appearance.title, "IP");
     }
 
     #[test]
@@ -1953,13 +1946,13 @@ mod tests {
         assert!(!keys
             .iter()
             .any(|key| matches!(key.role, Role::Target(_) | Role::Reply)));
-        // Productions sit on the lowest row, left to right; the current one is marked.
-        assert_eq!(keys[10].role, Role::Production(0));
-        assert_eq!(keys[11].role, Role::Production(1));
-        assert_eq!(keys[12].role, Role::Production(2));
-        assert_eq!(keys[11].appearance.subtitle, "current");
-        assert_eq!(keys[11].appearance.background, palette::MENU);
-        assert_eq!(keys[10].appearance.background, palette::MENU_ITEM);
+        // Productions start under the command row, left to right; the current one is marked.
+        assert_eq!(keys[5].role, Role::Production(0));
+        assert_eq!(keys[6].role, Role::Production(1));
+        assert_eq!(keys[7].role, Role::Production(2));
+        assert_eq!(keys[6].appearance.subtitle, "current");
+        assert_eq!(keys[6].appearance.background, palette::MENU);
+        assert_eq!(keys[5].appearance.background, palette::MENU_ITEM);
     }
 
     #[test]
@@ -1990,8 +1983,8 @@ mod tests {
         let mut state = DeckState::default();
         state.open_menu(MenuPage::Productions);
         let keys = layout(&geometry("mk2"), &snapshot, &state, &options());
-        assert_eq!(keys[10].appearance.title, "No productions");
-        assert_eq!(keys[10].role, Role::Empty);
+        assert_eq!(keys[5].appearance.title, "No productions");
+        assert_eq!(keys[5].role, Role::Empty);
     }
 
     #[test]
@@ -2054,10 +2047,11 @@ mod tests {
     }
 
     #[test]
-    fn occupied_slots_read_ltr_ttb_and_bottom_justify_rows() {
+    fn occupied_slots_read_ltr_ttb_from_the_top() {
         let mk2 = geometry("mk2");
         assert_eq!(target_slots(&mk2), vec![5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
-        assert_eq!(occupied_target_slots(&mk2, 5), vec![10, 11, 12, 13, 14]);
+        assert_eq!(occupied_target_slots(&mk2, 3), vec![5, 6, 7]);
+        assert_eq!(occupied_target_slots(&mk2, 5), vec![5, 6, 7, 8, 9]);
         assert_eq!(occupied_target_slots(&mk2, 6), vec![5, 6, 7, 8, 9, 10]);
         assert_eq!(
             occupied_target_slots(&mk2, 10),
@@ -2066,34 +2060,34 @@ mod tests {
         let xl = geometry("xl");
         assert_eq!(
             occupied_target_slots(&xl, 9),
-            (16..25).map(|i| i as u8).collect::<Vec<_>>()
+            (8..17).map(|i| i as u8).collect::<Vec<_>>()
         );
     }
 
     #[test]
-    fn xl_bottom_justifies_two_target_rows() {
+    fn xl_fills_target_rows_from_the_top() {
         let keys = roles("xl", 9, &DeckState::default());
-        assert_eq!(keys[8], Role::Empty);
-        assert_eq!(keys[15], Role::Empty);
-        assert_eq!(keys[16], Role::Target(TargetKey::User(0)));
-        assert_eq!(keys[23], Role::Target(TargetKey::User(7)));
-        assert_eq!(keys[24], Role::Target(TargetKey::Feed(8)));
-        assert_eq!(keys[25], Role::Empty);
+        assert_eq!(keys[8], Role::Target(TargetKey::User(0)));
+        assert_eq!(keys[15], Role::Target(TargetKey::User(7)));
+        assert_eq!(keys[16], Role::Target(TargetKey::Feed(8)));
+        assert_eq!(keys[17], Role::Empty);
+        assert_eq!(keys[24], Role::Empty);
+        assert_eq!(keys[31], Role::Empty);
     }
 
     #[test]
-    fn mk2_bottom_justifies_a_single_target_row() {
+    fn mk2_fills_a_single_target_row_from_the_top() {
         let keys = roles("mk2", 5, &DeckState::default());
         assert_eq!(keys[0], Role::Status);
         assert_eq!(keys[1], Role::VolumeToggle);
         assert_eq!(keys[4], Role::Reply);
         assert_eq!(keys[2], Role::MembersToggle);
-        assert_eq!(keys[5], Role::Empty);
-        assert_eq!(keys[10], Role::Target(TargetKey::User(0)));
-        assert_eq!(keys[11], Role::Target(TargetKey::User(1)));
-        assert_eq!(keys[12], Role::Target(TargetKey::Feed(2)));
-        assert_eq!(keys[13], Role::Target(TargetKey::User(3)));
-        assert_eq!(keys[14], Role::Target(TargetKey::User(4)));
+        assert_eq!(keys[5], Role::Target(TargetKey::User(0)));
+        assert_eq!(keys[6], Role::Target(TargetKey::User(1)));
+        assert_eq!(keys[7], Role::Target(TargetKey::Feed(2)));
+        assert_eq!(keys[8], Role::Target(TargetKey::User(3)));
+        assert_eq!(keys[9], Role::Target(TargetKey::User(4)));
+        assert!(keys[10..15].iter().all(|role| *role == Role::Empty));
     }
 
     #[test]
@@ -2116,17 +2110,17 @@ mod tests {
     }
 
     #[test]
-    fn mk2_last_page_bottom_justifies_leftover_targets() {
+    fn mk2_last_page_puts_leftover_targets_at_the_top() {
         let geometry = geometry("mk2");
         let mut state = DeckState::default();
         let snapshot = snapshot(12);
         assert_eq!(page_count(&geometry, 12), 2);
         state.page = 1;
         let keys = layout(&geometry, &snapshot, &state, &options());
-        assert_eq!(keys[5].role, Role::Empty);
-        assert_eq!(keys[10].role, Role::Target(TargetKey::User(10)));
-        assert_eq!(keys[11].role, Role::Target(TargetKey::Feed(11)));
-        assert_eq!(keys[12].role, Role::Empty);
+        assert_eq!(keys[5].role, Role::Target(TargetKey::User(10)));
+        assert_eq!(keys[6].role, Role::Target(TargetKey::Feed(11)));
+        assert_eq!(keys[7].role, Role::Empty);
+        assert_eq!(keys[10].role, Role::Empty);
     }
 
     #[test]
@@ -2177,7 +2171,7 @@ mod tests {
         assert_eq!(keys[2], Role::VolumeDown);
         assert_eq!(keys[3], Role::VolumeUp);
         assert_eq!(keys[4], Role::Reply);
-        assert_eq!(keys[10], Role::Target(TargetKey::User(0)));
+        assert_eq!(keys[5], Role::Target(TargetKey::User(0)));
     }
 
     #[test]
@@ -2378,13 +2372,13 @@ mod tests {
         let keys = layout(&geometry, &snapshot, &state, &options());
         assert_eq!(keys[0].appearance.subtitle, "ON AIR");
         assert_eq!(keys[0].appearance.background, palette::ON_AIR);
-        let bottom = 3 * 8;
-        assert_eq!(keys[bottom].appearance.badge, None);
-        assert_eq!(keys[bottom].appearance.background, palette::INCOMING);
-        assert!(keys[bottom].appearance.blink.is_some());
-        assert_eq!(keys[bottom + 1].appearance.background, palette::LOCKED);
-        assert_eq!(keys[bottom + 2].appearance.background, palette::MUTED);
-        assert_eq!(keys[bottom + 2].appearance.badge, Some(Badge::Muted));
+        let first = 8;
+        assert_eq!(keys[first].appearance.badge, None);
+        assert_eq!(keys[first].appearance.background, palette::INCOMING);
+        assert!(keys[first].appearance.blink.is_some());
+        assert_eq!(keys[first + 1].appearance.background, palette::LOCKED);
+        assert_eq!(keys[first + 2].appearance.background, palette::MUTED);
+        assert_eq!(keys[first + 2].appearance.badge, Some(Badge::Muted));
     }
 
     #[test]
@@ -2403,14 +2397,14 @@ mod tests {
         snapshot.targets[2].incoming = true;
         snapshot.targets[2].receiving = true;
         let keys = layout(&geometry, &snapshot, &state, &options());
-        let bottom = 3 * 8;
-        assert_eq!(keys[bottom].appearance.background, palette::TALKING);
-        assert!(keys[bottom].appearance.blink.is_none());
-        assert_eq!(keys[bottom + 1].appearance.background, palette::INCOMING);
-        assert_eq!(keys[bottom + 1].appearance.badge, None);
-        assert_eq!(keys[bottom + 2].appearance.background, palette::TALKING);
+        let first = 8;
+        assert_eq!(keys[first].appearance.background, palette::TALKING);
+        assert!(keys[first].appearance.blink.is_none());
+        assert_eq!(keys[first + 1].appearance.background, palette::INCOMING);
+        assert_eq!(keys[first + 1].appearance.badge, None);
+        assert_eq!(keys[first + 2].appearance.background, palette::TALKING);
         assert_eq!(
-            keys[bottom + 2].appearance.blink,
+            keys[first + 2].appearance.blink,
             Some(palette::INCOMING),
             "talking while hearing that target blinks purple/green like the web client"
         );
@@ -2560,9 +2554,9 @@ mod tests {
         assert_eq!(keys[4].role, Role::Reply);
         assert_eq!(keys[1].appearance.title, "HEAR");
         assert_eq!(keys[1].appearance.subtitle, "M1");
-        let bottom = 2 * 5;
+        let first = 5;
         assert_eq!(
-            keys[bottom].role,
+            keys[first].role,
             Role::Member {
                 conference: TargetKey::Conference(1),
                 user_id: 0
