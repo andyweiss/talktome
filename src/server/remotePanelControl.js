@@ -9,6 +9,7 @@ function installRemotePanelControl(deps) {
     buildOperatorTargetsForUser, getBridgeTargetsForUser, buildIncomingTalkStateForUser,
     getUserTargetAudioStates, mergeUserTargetAudioStates, getUserPanelSettings, updateUserPanelSettings,
     getResolvedUserAudioSettings, updateUserAudioSettings, updateProductionTargetOrder, notifyTargetChange,
+    getAllConfiguredUsersForConference,
   } = deps;
   const namespace = io.of('/panel');
   const reports = new Map();
@@ -20,6 +21,15 @@ function installRemotePanelControl(deps) {
     }
     return user;
   };
+  // Bridge targets carry no production, so list conference members from every
+  // production and Bridge route; the panel needs them for member levels.
+  const withConferenceMembers = target => (target.targetType !== 'conference' || !getAllConfiguredUsersForConference
+    ? target
+    : {
+      ...target,
+      members: getAllConfiguredUsersForConference(target.targetId)
+        .map(member => ({ userId: Number(member.id), name: member.name || String(member.id) })),
+    });
   const authorized = socket => Boolean(getAdminSession({ headers: socket.handshake.headers })?.session?.isGlobalAdmin);
   const savedSettings = userId => {
     const settings = getUserPanelSettings(userId);
@@ -41,7 +51,9 @@ function installRemotePanelControl(deps) {
     const isBridge = Boolean(found?.peer?.isBridgePeer);
     const report = reports.get(Number(userId));
     const fresh = Boolean(found && report?.socketId === found.socketId && Date.now() - report.at < 10000);
-    const targets = isBridge ? getBridgeTargetsForUser(userId) : productionId == null ? [] : buildOperatorTargetsForUser(userId, productionId);
+    const targets = isBridge
+      ? getBridgeTargetsForUser(userId).map(withConferenceMembers)
+      : productionId == null ? [] : buildOperatorTargetsForUser(userId, productionId);
     const activeFeedIds = new Set(deps.getActiveFeedIds?.() || []);
     return {
       userId: Number(userId), name: user.name, online: Boolean(found), clientConnected: fresh,

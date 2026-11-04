@@ -202,6 +202,7 @@ const {
   removeProductionFeed,
   getProductionConferencesForUser,
   getProductionUsersForConference,
+  getAllConfiguredUsersForConference,
   setProductionConferenceMembership,
   setProductionConferenceListenOnly,
   removeProductionConferenceMembership,
@@ -7755,7 +7756,8 @@ function emitUserListToOperators() {
 const remotePanels = require('./remotePanelControl').installRemotePanelControl({
   app, io, publicDir, requireAdmin, getAdminSession, getUserById, findUserPeerByUserId,
   getUserList, getEnabledProductionsForUser, getPrimaryProduction, isUserInProduction, buildOperatorTargetsForUser,
-  getBridgeTargetsForUser: getBridgePanelTargetsForUser, buildIncomingTalkStateForUser, getUserTargetAudioStates,
+  getBridgeTargetsForUser: getBridgePanelTargetsForUser, getAllConfiguredUsersForConference,
+  buildIncomingTalkStateForUser, getUserTargetAudioStates,
   getActiveFeedIds() {
     const ids = new Set();
     for (const peer of peers.values()) {

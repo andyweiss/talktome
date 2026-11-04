@@ -38,6 +38,7 @@ async function fixture(t) {
     isUserInProduction: (userId, productionId) => Number(userId) === 7 && Number(productionId) === 1,
     getPrimaryProduction: () => ({ id: 1 }), buildOperatorTargetsForUser: () => targets,
     getBridgeTargetsForUser: () => targets, buildIncomingTalkStateForUser: () => ({ addressedNow: [], replyTarget: null }),
+    getAllConfiguredUsersForConference: id => (Number(id) === 4 ? [{ id: 8, name: 'Director' }, { id: 7, name: 'Camera' }] : []),
     getActiveFeedIds: () => [...activeFeedIds],
     getUserTargetAudioStates: id => audio.get(Number(id)) || [],
     mergeUserTargetAudioStates(id, rows) {
@@ -91,6 +92,19 @@ test('remote panels see sending feeds independently of local reception and clien
   assert.equal(JSON.parse(state.panelSettings.storage['stoppedFeeds:user:7'])['feed-3'], true);
   f.activeFeedIds.clear();
   assert.deepEqual(f.control.snapshot(7).activeFeedKeys, []);
+});
+
+test('Bridge panels list conference members so their levels can be mixed', async t => {
+  const f = await fixture(t);
+  const conferenceMembers = state => state.targets.find(target => target.targetType === 'conference').members;
+  assert.equal(conferenceMembers(f.control.snapshot(7)), undefined, 'operator targets keep their production members');
+
+  f.peers.set(7, { socketId: 'bridge-session', peer: { kind: 'user', userId: 7, isBridgePeer: true, socket: {} } });
+  const state = f.control.snapshot(7);
+  assert.equal(state.connectionType, 'bridge');
+  assert.deepEqual(conferenceMembers(state), [{ userId: 8, name: 'Director' }, { userId: 7, name: 'Camera' }]);
+  assert.equal(state.targets.find(target => target.targetType === 'user').members, undefined);
+  assert.equal(f.targets[1].members, undefined, 'the Bridge target catalog is not modified');
 });
 
 test('panel namespace and HTML require an admin session', async t => {
